@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "banners",
+  "info": {
+    "singularName": "banner",
+    "pluralName": "banners",
+    "displayName": "Banner",
+    "description": "Promotional banners for the home screen"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "subtitle": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "description": {
+      "type": "text"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "backgroundColor": {
+      "type": "string",
+      "default": "#14b8a6"
+    },
+    "textColor": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "actionText": {
+      "type": "string",
+      "default": "Shop Now"
+    },
+    "actionType": {
+      "type": "enumeration",
+      "enum": ["product_list", "category", "product_details", "cart", "external_link"],
+      "default": "product_list"
+    },
+    "actionData": {
+      "type": "json"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "startDate": {
+      "type": "datetime"
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "targetAudience": {
+      "type": "enumeration",
+      "enum": ["all", "new_users", "returning_users", "premium_users"],
+      "default": "all"
+    }
+  }
+} 

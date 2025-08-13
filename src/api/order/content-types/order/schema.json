@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "singularName": "order",
+    "pluralName": "orders",
+    "displayName": "Order"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "orderNumber": { "type": "string", "required": true, "unique": true },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "vendor": { "type": "relation", "relation": "manyToOne", "target": "api::vendor.vendor" },
+    "products": { "type": "relation", "relation": "manyToMany", "target": "api::product.product" },
+    "orderItems": { "type": "json" },
+    "totalAmount": { "type": "decimal", "required": true },
+    "deliveryCharge": { "type": "decimal", "default": 0 },
+    "status": { "type": "enumeration", "enum": ["pending", "confirmed", "shipped", "delivered", "ready", "pickedUp", "cancelled"], "default": "pending" },
+    "customerName": { "type": "string", "required": true },
+    "customerEmail": { "type": "email", "required": true },
+    "customerPhone": { "type": "string" },
+    "shippingAddress": { "type": "json" },
+    "deliveryType": { "type": "enumeration", "enum": ["delivery", "pickup"], "default": "delivery" },
+    "pickupAddress": { "type": "json" },
+    "pickupTime": { "type": "string" },
+    "paymentMethod": { "type": "string" },
+    "paymentStatus": { "type": "enumeration", "enum": ["pending", "paid", "failed"], "default": "pending" },
+    "notes": { "type": "text" }
+  }
+} 

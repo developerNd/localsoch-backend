@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_user_user_infos",
+  "info": {
+    "displayName": "User Info",
+    "description": "User information for button clicks"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "isGuest": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+} 

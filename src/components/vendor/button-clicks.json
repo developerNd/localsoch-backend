@@ -1,0 +1,44 @@
+{
+  "collectionName": "components_vendor_button_clicks",
+  "info": {
+    "displayName": "Button Clicks",
+    "description": "Track button click statistics"
+  },
+  "options": {},
+  "attributes": {
+    "messageClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "callClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "whatsappClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "emailClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "websiteClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "totalClicks": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    },
+    "lastUpdated": {
+      "type": "datetime",
+      "required": false
+    }
+  }
+} 

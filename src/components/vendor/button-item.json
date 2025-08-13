@@ -1,0 +1,42 @@
+{
+  "collectionName": "components_vendor_button_items",
+  "info": {
+    "displayName": "Button Item",
+    "description": "Individual button configuration"
+  },
+  "options": {},
+  "attributes": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "icon": {
+      "type": "string",
+      "required": false
+    },
+    "action": {
+      "type": "enumeration",
+      "enum": ["message", "call", "whatsapp", "email", "website"],
+      "required": true
+    },
+    "value": {
+      "type": "string",
+      "required": false
+    },
+    "color": {
+      "type": "string",
+      "default": "primary",
+      "required": false
+    },
+    "order": {
+      "type": "integer",
+      "default": 0,
+      "required": false
+    }
+  }
+} 

@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_device_device_infos",
+  "info": {
+    "displayName": "Device Info",
+    "description": "Device information for button clicks"
+  },
+  "options": {},
+  "attributes": {
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "ios",
+        "android",
+        "web",
+        "unknown"
+      ]
+    },
+    "appVersion": {
+      "type": "string"
+    },
+    "deviceModel": {
+      "type": "string"
+    },
+    "osVersion": {
+      "type": "string"
+    }
+  }
+} 

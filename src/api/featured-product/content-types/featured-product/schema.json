@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "featured_products",
+  "info": {
+    "singularName": "featured-product",
+    "pluralName": "featured-products",
+    "displayName": "Featured Product",
+    "description": "Featured products for the home screen"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "featured_products"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "subtitle": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "description": {
+      "type": "text"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "featuredType": {
+      "type": "enumeration",
+      "enum": ["featured", "trending", "new_arrival", "best_seller", "flash_sale"],
+      "default": "featured"
+    },
+    "startDate": {
+      "type": "datetime"
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "discountPercentage": {
+      "type": "integer",
+      "min": 0,
+      "max": 100
+    },
+    "highlightColor": {
+      "type": "string",
+      "default": "#ef4444"
+    },
+    "customImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "targetAudience": {
+      "type": "enumeration",
+      "enum": ["all", "new_users", "returning_users", "premium_users"],
+      "default": "all"
+    }
+  }
+} 

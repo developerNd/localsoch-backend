@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vendors",
+  "info": {
+    "singularName": "vendor",
+    "pluralName": "vendors",
+    "displayName": "Vendor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "address": { "type": "text" },
+    "contact": { "type": "string" },
+    "whatsapp": { "type": "string" },
+    "user": { "type": "relation", "relation": "oneToOne", "target": "plugin::users-permissions.user" },
+    "products": { "type": "relation", "relation": "oneToMany", "target": "api::product.product", "mappedBy": "vendor" },
+    "profileImage": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "buttonConfig": {
+      "type": "component",
+      "component": "vendor.button-config",
+      "required": false
+    },
+    "buttonClicks": {
+      "type": "component",
+      "component": "vendor.button-clicks",
+      "required": false
+    },
+    "buttonClickLogs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::button-click-log.button-click-log",
+      "mappedBy": "vendor"
+    }
+  }
+} 

@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_vendor_button_configs",
+  "info": {
+    "displayName": "Button Config",
+    "description": "Configuration for vendor profile buttons"
+  },
+  "options": {},
+  "attributes": {
+    "messageButton": {
+      "type": "component",
+      "component": "vendor.button-item",
+      "required": false
+    },
+    "callButton": {
+      "type": "component",
+      "component": "vendor.button-item",
+      "required": false
+    },
+    "whatsappButton": {
+      "type": "component",
+      "component": "vendor.button-item",
+      "required": false
+    },
+    "emailButton": {
+      "type": "component",
+      "component": "vendor.button-item",
+      "required": false
+    },
+    "websiteButton": {
+      "type": "component",
+      "component": "vendor.button-item",
+      "required": false
+    }
+  }
+} 
