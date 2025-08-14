@@ -274,6 +274,47 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     return { data, meta };
   },
 
+  // Custom endpoint for post-payment registration
+  async completeRegistration(ctx) {
+    try {
+      const { userId, vendorData } = ctx.request.body;
+      
+      // Verify the user exists
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
+      if (!user) {
+        return ctx.badRequest('User not found');
+      }
+
+      // Update user role to seller
+      await strapi.entityService.update('plugin::users-permissions.user', userId, {
+        data: {
+          role: 2 // Seller role ID
+        }
+      });
+
+      // Create vendor profile
+      const vendor = await strapi.entityService.create('api::vendor.vendor', {
+        data: {
+          ...vendorData,
+          user: userId,
+          isActive: true,
+          isApproved: true
+        }
+      });
+
+      return ctx.send({
+        success: true,
+        data: {
+          user: { id: userId, role: 'seller' },
+          vendor: vendor
+        }
+      });
+    } catch (error) {
+      console.error('Error in completeRegistration:', error);
+      return ctx.internalServerError('Failed to complete registration');
+    }
+  },
+
   async update(ctx) {
     try {
       console.log('=== VENDOR UPDATE METHOD CALLED ===');

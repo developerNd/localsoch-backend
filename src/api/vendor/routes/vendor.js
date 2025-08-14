@@ -42,6 +42,16 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  {
+    method: 'POST',
+    path: '/vendors/complete-registration',
+    handler: 'api::vendor.vendor.completeRegistration',
+    config: {
+      auth: false, // Allow unauthenticated access for registration completion
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes); 
