@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "button_click_logs",
+  "info": {
+    "singularName": "button-click-log",
+    "pluralName": "button-click-logs",
+    "displayName": "Button Click Log",
+    "description": "Track button clicks for vendors"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "vendor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vendor.vendor",
+      "inversedBy": "buttonClickLogs"
+    },
+    "buttonType": {
+      "type": "string",
+      "required": true,
+      "description": "Type of button clicked (e.g., 'call', 'whatsapp', 'website')"
+    },
+    "ipAddress": {
+      "type": "string",
+      "description": "IP address of the user who clicked"
+    },
+    "userAgent": {
+      "type": "text",
+      "description": "User agent string of the browser/device"
+    },
+    "clickedAt": {
+      "type": "datetime",
+      "required": true,
+      "description": "Timestamp when the button was clicked"
+    },
+    "userInfo": {
+      "type": "component",
+      "component": "user.user-info",
+      "description": "Additional user information"
+    },
+    "deviceInfo": {
+      "type": "component",
+      "component": "device.device-info",
+      "description": "Device information"
+    },
+    "referrer": {
+      "type": "string",
+      "description": "Referrer URL if available"
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Session identifier for tracking user sessions"
+    }
+  }
+} 

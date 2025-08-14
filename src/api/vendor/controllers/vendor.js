@@ -387,10 +387,8 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         };
 
         try {
-          // Save to database using the button-click-log content type
-          await strapi.entityService.create('api::button-click-log.button-click-log', {
-            data: logEntry
-          });
+          // Save to database using the button-click-log service
+          await strapi.service('api::button-click-log.button-click-log').logButtonClick(logEntry);
           console.log('Button click logged to database:', logEntry);
         } catch (error) {
           console.error('Error saving click log to database:', error);
@@ -608,34 +606,32 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
   async getButtonAnalytics(ctx) {
     try {
       const { id } = ctx.params;
+      const { startDate, endDate } = ctx.query;
       
       if (!id) {
         return ctx.badRequest('vendorId is required');
       }
 
-      // Get vendor with button clicks
-      const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
-        populate: ['buttonClicks']
-      });
-
-      if (!vendor) {
-        return ctx.notFound('Vendor not found');
-      }
-
-      // If user is seller, check if they own this vendor
+      // Check if user is seller and owns this vendor
       if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'seller') {
-        if (vendor.user.id !== ctx.state.user.id) {
+        const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
+          populate: ['user']
+        });
+        
+        if (!vendor || vendor.user.id !== ctx.state.user.id) {
           return ctx.forbidden('Access denied');
         }
       }
 
+      // Get analytics using the button-click-log service
+      const analytics = await strapi.service('api::button-click-log.button-click-log').getVendorAnalytics(id, {
+        startDate,
+        endDate
+      });
+
       return ctx.send({
         success: true,
-        data: {
-          totalClicks: vendor.buttonClicks?.totalClicks || 0,
-          buttonClicks: vendor.buttonClicks || {},
-          lastUpdated: vendor.buttonClicks?.lastUpdated
-        }
+        data: analytics
       });
 
     } catch (error) {
@@ -661,8 +657,8 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         }
       }
 
-      // Get button click logs from database
-      const logs = await strapi.entityService.findMany('api::button-click-log.button-click-log', {
+      // Get button click logs from database using the service
+      const logs = await strapi.service('api::button-click-log.button-click-log').find({
         filters: { vendor: id },
         sort: { clickedAt: 'desc' },
         pagination: {

@@ -491,6 +491,44 @@ export interface ApiBannerBanner extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiButtonClickLogButtonClickLog
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'button_click_logs';
+  info: {
+    description: 'Track button clicks for vendors';
+    displayName: 'Button Click Log';
+    pluralName: 'button-click-logs';
+    singularName: 'button-click-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    buttonType: Schema.Attribute.String & Schema.Attribute.Required;
+    clickedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    deviceInfo: Schema.Attribute.Component<'device.device-info', false>;
+    ipAddress: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::button-click-log.button-click-log'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    referrer: Schema.Attribute.String;
+    sessionId: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    userAgent: Schema.Attribute.Text;
+    userInfo: Schema.Attribute.Component<'user.user-info', false>;
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -1316,6 +1354,7 @@ declare module '@strapi/strapi' {
       'api::about.about': ApiAboutAbout;
       'api::author.author': ApiAuthorAuthor;
       'api::banner.banner': ApiBannerBanner;
+      'api::button-click-log.button-click-log': ApiButtonClickLogButtonClickLog;
       'api::category.category': ApiCategoryCategory;
       'api::featured-product.featured-product': ApiFeaturedProductFeaturedProduct;
       'api::global.global': ApiGlobalGlobal;
