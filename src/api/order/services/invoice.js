@@ -17,7 +17,8 @@ module.exports = {
       order.orderItems.reduce((sum, item) => sum + (parseFloat(item.totalAmount) || 0), 0) : 
       (order.totalAmount - (order.deliveryCharge || 0));
     
-    const deliveryCharge = order.deliveryCharge || 0;
+    // const deliveryCharge = order.deliveryCharge || 0;
+    const deliveryCharge = 0; // Temporarily disabled delivery fees
     const tax = 0; // Currently set to 0
     const total = subtotal + deliveryCharge + tax;
     
@@ -30,6 +31,9 @@ module.exports = {
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
       shippingAddress: order.shippingAddress,
+      pickupAddress: order.pickupAddress,
+      pickupTime: order.pickupTime,
+      deliveryType: order.deliveryType || 'delivery',
       items: order.orderItems || [],
       subtotal: subtotal.toFixed(2),
       deliveryCharge: deliveryCharge.toFixed(2),
@@ -71,15 +75,34 @@ module.exports = {
     }
     lines.push('');
     
-    // Shipping address
-    if (invoiceData.shippingAddress) {
-      lines.push('SHIPPING ADDRESS:');
-      const address = invoiceData.shippingAddress;
-      if (address.street) lines.push(address.street);
-      if (address.city) lines.push(address.city);
-      if (address.state) lines.push(address.state);
-      if (address.pincode) lines.push(address.pincode);
+    // Delivery/Pickup Information
+    if (invoiceData.deliveryType === 'pickup') {
+      lines.push('PICKUP INFORMATION:');
+      if (invoiceData.pickupAddress) {
+        const pickup = invoiceData.pickupAddress;
+        if (pickup.name) lines.push(`Shop: ${pickup.name}`);
+        if (pickup.address) lines.push(`Address: ${pickup.address}`);
+        if (pickup.contact) lines.push(`Contact: ${pickup.contact}`);
+      }
+      if (invoiceData.pickupTime) {
+        const pickupTimeText = invoiceData.pickupTime === '30min' ? '30 minutes' : 
+                              invoiceData.pickupTime === '1hour' ? '1 hour' : 
+                              invoiceData.pickupTime === '2hours' ? '2 hours' : 
+                              invoiceData.pickupTime;
+        lines.push(`Pickup Time: ${pickupTimeText}`);
+      }
       lines.push('');
+    } else {
+      // Shipping address for delivery orders
+      if (invoiceData.shippingAddress) {
+        lines.push('SHIPPING ADDRESS:');
+        const address = invoiceData.shippingAddress;
+        if (address.street) lines.push(address.street);
+        if (address.city) lines.push(address.city);
+        if (address.state) lines.push(address.state);
+        if (address.pincode) lines.push(address.pincode);
+        lines.push('');
+      }
     }
     
     // Items
@@ -106,19 +129,35 @@ module.exports = {
     
     // Summary
     lines.push(`Subtotal:`.padEnd(43) + `₹${invoiceData.subtotal}`.padStart(8));
-    lines.push(`Delivery Charge:`.padEnd(43) + `₹${invoiceData.deliveryCharge}`.padStart(8));
+    // Temporarily disabled delivery charge display
+    // if (invoiceData.deliveryType === 'pickup') {
+    //   lines.push(`Pickup:`.padEnd(43) + `₹${invoiceData.deliveryCharge}`.padStart(8));
+    // } else {
+    //   lines.push(`Delivery Charge:`.padEnd(43) + `₹${invoiceData.deliveryCharge}`.padStart(8));
+    // }
     lines.push(`Tax:`.padEnd(43) + `₹${invoiceData.tax}`.padStart(8));
     lines.push('='.repeat(50));
     lines.push(`TOTAL:`.padEnd(43) + `₹${invoiceData.total}`.padStart(8));
     lines.push('='.repeat(50));
     lines.push('');
     
-    // Payment and shipping info
+    // Payment and delivery info
     lines.push('PAYMENT INFORMATION:');
     lines.push(`Method: ${invoiceData.paymentMethod || 'COD'}`);
     lines.push(`Status: ${invoiceData.paymentStatus || 'pending'}`);
+    lines.push(`Delivery Type: ${invoiceData.deliveryType === 'pickup' ? 'Pick from Shop' : 'Home Delivery'}`);
     lines.push(`Tracking: ${invoiceData.trackingNumber}`);
     lines.push('');
+    
+    // Pickup instructions for pickup orders
+    if (invoiceData.deliveryType === 'pickup') {
+      lines.push('PICKUP INSTRUCTIONS:');
+      lines.push('• Please bring this invoice or order confirmation');
+      lines.push('• Show the order number to the shop staff');
+      lines.push('• Collect your items from the counter');
+      lines.push('• Payment will be collected at pickup');
+      lines.push('');
+    }
     
     // Footer
     lines.push('Thank you for your purchase!');

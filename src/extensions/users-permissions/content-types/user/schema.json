@@ -71,6 +71,15 @@
     "referralCount": {
       "type": "integer",
       "default": 0
+    },
+    "phone": {
+      "type": "string"
+    },
+    "notificationPreferences": {
+      "type": "json"
+    },
+    "addresses": {
+      "type": "json"
     }
   }
 } 

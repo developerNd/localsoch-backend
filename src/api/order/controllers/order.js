@@ -315,7 +315,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
       // Recent orders (last 10)
       const recentOrders = orders
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 10);
 
       return ctx.send({
@@ -388,7 +388,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     console.log('🛒 Creating new order with data:', JSON.stringify(data, null, 2));
 
     // Calculate delivery charge (default to 50 if not provided)
-    const deliveryCharge = data.deliveryCharge || 50;
+    // const deliveryCharge = data.deliveryCharge || 50;
+    const deliveryCharge = 0; // Temporarily disabled delivery fees
     
     // Calculate subtotal from order items
     let subtotal = 0;
@@ -448,10 +449,25 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     try {
       // Get the existing order to preserve required fields
       const existingOrder = await strapi.service('api::order.order').findOne(id, {
-        populate: ['vendor']
+        populate: ['vendor', 'user']
       });
       if (!existingOrder) {
         return ctx.notFound('Order not found');
+      }
+
+      // For customers, check if they own this order
+      if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'authenticated') {
+        if (existingOrder.user?.id !== ctx.state.user.id) {
+          return ctx.forbidden('You can only update your own orders');
+        }
+        
+        // Additional validation for cancellation
+        if (data.status === 'cancelled') {
+          const cancellableStatuses = ['pending', 'confirmed'];
+          if (!cancellableStatuses.includes(existingOrder.status)) {
+            return ctx.badRequest(`Orders with status "${existingOrder.status}" cannot be cancelled`);
+          }
+        }
       }
 
       // For sellers, check if they have access to this order
@@ -512,7 +528,9 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     }
   },
 
-  async findOne(ctx) {
+
+
+  async findOneWithInvoice(ctx) {
     const { id } = ctx.params;
     const { invoice } = ctx.query;
 
