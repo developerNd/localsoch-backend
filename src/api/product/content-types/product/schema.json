@@ -12,12 +12,24 @@
   "attributes": {
     "name": { "type": "string", "required": true },
     "description": { "type": "text" },
+    "mrp": { "type": "decimal", "required": true },
     "price": { "type": "decimal", "required": true },
+    "discount": { "type": "decimal" },
     "image": { "type": "media", "multiple": false, "required": false },
     "images": { "type": "media", "multiple": true, "required": false },
     "category": { "type": "relation", "relation": "manyToOne", "target": "api::category.category" },
     "vendor": { "type": "relation", "relation": "manyToOne", "target": "api::vendor.vendor" },
     "stock": { "type": "integer" },
+    "isActive": { "type": "boolean", "default": true },
+    "isApproved": { "type": "boolean", "default": false },
+    "approvalStatus": { 
+      "type": "enumeration", 
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending"
+    },
+    "approvalReason": { "type": "text" },
+    "approvedAt": { "type": "datetime" },
+    "approvedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
     "featured_products": { "type": "relation", "relation": "oneToMany", "target": "api::featured-product.featured-product", "mappedBy": "product" }
   }
 } 

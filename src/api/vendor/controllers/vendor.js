@@ -34,14 +34,85 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'admin') {
       // Ensure we populate user data for admin
       if (!ctx.query.populate) {
-        ctx.query.populate = ['user', 'products', 'buttonClicks'];
+        ctx.query.populate = ['user', 'products', 'buttonClicks', 'businessCategory'];
       } else if (!ctx.query.populate.includes('user')) {
-        ctx.query.populate = [...ctx.query.populate.split(','), 'user', 'products', 'buttonClicks'];
+        ctx.query.populate = [...ctx.query.populate.split(','), 'user', 'products', 'buttonClicks', 'businessCategory'];
       }
     }
     
     const { data, meta } = await super.find(ctx);
     return { data, meta };
+  },
+
+  async create(ctx) {
+    try {
+      console.log('🔍 Creating vendor with data:', ctx.request.body);
+      
+      const { data } = ctx.request.body;
+      
+      // Ensure user is authenticated
+      if (!ctx.state.user) {
+        return ctx.unauthorized('Authentication required');
+      }
+      
+      // Check if user already has a vendor
+      const existingVendor = await strapi.entityService.findMany('api::vendor.vendor', {
+        filters: { user: ctx.state.user.id }
+      });
+      
+      if (existingVendor && existingVendor.length > 0) {
+        return ctx.badRequest('User already has a vendor profile');
+      }
+      
+      // Create vendor with user association
+      const vendorData = {
+        ...data,
+        user: ctx.state.user.id,
+        isActive: data.isActive ?? true,
+        isApproved: data.isApproved ?? false,
+        status: data.status ?? 'pending'
+      };
+      
+      // Handle business category relation
+      if (data.businessCategory) {
+        vendorData.businessCategory = data.businessCategory;
+      }
+      
+      console.log('🔍 User ID from context:', ctx.state.user.id);
+      console.log('🔍 Final vendor data:', vendorData);
+      
+      console.log('📝 Creating vendor with final data:', vendorData);
+      
+      const vendor = await strapi.entityService.create('api::vendor.vendor', {
+        data: vendorData,
+        populate: ['user', 'businessCategory']
+      });
+      
+      console.log('✅ Vendor created successfully:', vendor.id);
+      
+      // Automatically update user role to seller after vendor creation
+      try {
+        console.log('🔄 Updating user role to seller...');
+        await strapi.entityService.update('plugin::users-permissions.user', ctx.state.user.id, {
+          data: {
+            role: 2 // seller role ID
+          }
+        });
+        console.log('✅ User role updated to seller successfully');
+      } catch (roleError) {
+        console.error('❌ Failed to update user role:', roleError);
+        console.warn('⚠️ Vendor created but user role update failed');
+      }
+      
+      return ctx.send({
+        success: true,
+        data: vendor
+      });
+      
+    } catch (error) {
+      console.error('❌ Error creating vendor:', error);
+      return ctx.internalServerError('Failed to create vendor');
+    }
   },
 
   async findOne(ctx) {
@@ -81,6 +152,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     const vendor = await strapi.entityService.findOne('api::vendor.vendor', ctx.params.id, {
       populate: [
         'user',
+        'businessCategory',
         'buttonConfig',
         'buttonClicks',
         'profileImage',
@@ -408,9 +480,92 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         return ctx.unauthorized('Authentication required for vendor updates');
       }
 
-      // Handle regular vendor updates
-      const result = await super.update(ctx);
-      return result;
+      // Check if user owns this vendor (for sellers)
+      if (ctx.state.user.role && ctx.state.user.role.name === 'seller') {
+        const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
+          populate: ['user']
+        });
+        
+        if (!vendor || vendor.user.id !== ctx.state.user.id) {
+          return ctx.forbidden('Access denied - you can only update your own vendor profile');
+        }
+      }
+
+      // Handle file uploads for profile image
+      console.log('🔍 Request body:', ctx.request.body);
+      console.log('🔍 Request body data type:', typeof ctx.request.body.data);
+      console.log('🔍 Request body data:', ctx.request.body.data);
+      console.log('🔍 Request files:', ctx.request.files);
+      
+      let updateData;
+      
+      // Check if data is a string (from FormData) or object (from JSON)
+      if (typeof ctx.request.body.data === 'string') {
+        // Parse JSON string from FormData
+        try {
+          updateData = JSON.parse(ctx.request.body.data);
+          console.log('🔍 Parsed updateData:', updateData);
+        } catch (error) {
+          console.error('Error parsing JSON data:', error);
+          return ctx.badRequest('Invalid JSON data in request');
+        }
+      } else {
+        // Data is already an object (from JSON request)
+        updateData = { ...ctx.request.body.data };
+        console.log('🔍 Object updateData:', updateData);
+      }
+      
+      // If there are files in the request, handle profile image upload
+      if (ctx.request.files && (ctx.request.files.profileImage || ctx.request.files['files.profileImage'])) {
+        console.log('🔍 Processing file upload');
+        const file = ctx.request.files.profileImage || ctx.request.files['files.profileImage'];
+        console.log('🔍 File details:', {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        });
+        
+        try {
+          // Upload the file to Strapi media library
+          const uploadedFile = await strapi.plugins.upload.services.upload.upload({
+            data: {},
+            files: file
+          });
+          
+          console.log('🔍 Uploaded file result:', uploadedFile);
+          
+          if (uploadedFile && uploadedFile.length > 0) {
+            // Set the profile image to the uploaded file
+            updateData.profileImage = uploadedFile[0].id;
+            console.log('🔍 Set profileImage to:', uploadedFile[0].id);
+          } else {
+            console.error('🔍 No file uploaded - uploadedFile is empty');
+          }
+        } catch (uploadError) {
+          console.error('🔍 File upload error:', uploadError);
+          console.error('🔍 Upload error details:', uploadError.message);
+          // Continue without the image if upload fails
+        }
+      } else {
+        console.log('🔍 No files in request or no profileImage file');
+      }
+
+      console.log('🔍 Final updateData:', updateData);
+      
+      // Update the vendor
+      const updatedVendor = await strapi.entityService.update('api::vendor.vendor', id, {
+        data: updateData,
+        populate: ['user', 'profileImage', 'buttonConfig', 'buttonClicks']
+      });
+
+      console.log('🔍 Updated vendor result:', updatedVendor);
+      console.log('🔍 Updated vendor profileImage:', updatedVendor.profileImage);
+
+      return ctx.send({
+        success: true,
+        message: 'Vendor profile updated successfully',
+        data: updatedVendor
+      });
     } catch (error) {
       console.error('Error in vendor update:', error);
       return ctx.internalServerError('Failed to update vendor');
@@ -683,6 +838,164 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     } catch (error) {
       console.error('Error fetching button click logs:', error);
       return ctx.internalServerError('Failed to fetch button click logs');
+    }
+  },
+
+  // Admin method to approve/reject vendors
+  async updateVendorStatus(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { status, reason } = ctx.request.body;
+
+      console.log('🔍 updateVendorStatus called with:', { id, status, reason });
+      console.log('🔍 Status type:', typeof status);
+      console.log('🔍 Status value:', JSON.stringify(status));
+      console.log('🔍 User:', ctx.state.user?.id, ctx.state.user?.role?.name);
+
+      // Check if user is admin
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
+        console.log('❌ Access denied - not an admin');
+        return ctx.forbidden('Admin access required');
+      }
+
+      // Validate status value
+      const validStatuses = ['pending', 'approved', 'rejected', 'suspended'];
+      if (!validStatuses.includes(status)) {
+        console.log('❌ Invalid status value:', status);
+        return ctx.badRequest(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+      }
+
+      // Get vendor with user
+      const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
+        populate: ['user']
+      });
+
+      if (!vendor) {
+        console.log('❌ Vendor not found');
+        return ctx.notFound('Vendor not found');
+      }
+
+      console.log('🔍 Found vendor:', vendor.id, vendor.name, 'User:', vendor.user?.id);
+
+      // Update vendor status and isApproved
+      const updateData = {
+        status: status,
+        statusReason: reason,
+        statusUpdatedAt: new Date()
+      };
+
+      // Also update isApproved based on status
+      if (status === 'approved') {
+        updateData.isApproved = true;
+      } else if (status === 'rejected' || status === 'suspended') {
+        updateData.isApproved = false;
+      }
+      // For 'pending' status, keep isApproved as is
+
+      console.log('🔍 Updating vendor with data:', updateData);
+
+      const updatedVendor = await strapi.entityService.update('api::vendor.vendor', id, {
+        data: updateData
+      });
+
+      console.log('✅ Vendor status updated:', updatedVendor.status);
+      console.log('✅ Vendor isApproved updated:', updatedVendor.isApproved);
+
+      // If vendor is approved, update user role to seller
+      if (status === 'approved' && vendor.user) {
+        console.log('🔧 Updating user role to seller for user:', vendor.user.id);
+        await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
+          role: 2 // seller role ID
+        });
+        console.log('✅ User role updated to seller');
+      }
+
+      // If vendor is rejected, update user role to seller_pending
+      if (status === 'rejected' && vendor.user) {
+        console.log('🔧 Updating user role to seller_pending for user:', vendor.user.id);
+        await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
+          role: 3 // seller_pending role ID
+        });
+        console.log('✅ User role updated to seller_pending');
+      }
+
+      return ctx.send({
+        success: true,
+        message: `Vendor ${status} successfully`,
+        data: updatedVendor
+      });
+    } catch (error) {
+      console.error('Error updating vendor status:', error);
+      return ctx.internalServerError('Failed to update vendor status');
+    }
+  },
+
+  // Admin method to get vendor statistics
+  async getVendorStats(ctx) {
+    try {
+      console.log('🔍 getVendorStats called by user:', ctx.state.user?.id, ctx.state.user?.role?.name);
+
+      // Check if user is admin
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
+        console.log('❌ Access denied - not an admin');
+        return ctx.forbidden('Admin access required');
+      }
+
+      // Get all vendors with user data
+      const vendors = await strapi.entityService.findMany('api::vendor.vendor', {
+        populate: ['user', 'products']
+      });
+
+      // Calculate statistics
+      const totalVendors = vendors.length;
+      const activeVendors = vendors.filter(v => v.products && v.products.length > 0).length;
+      const pendingVendors = vendors.filter(v => v.status === 'pending' || !v.status).length;
+      const approvedVendors = vendors.filter(v => v.status === 'approved').length;
+      const rejectedVendors = vendors.filter(v => v.status === 'rejected').length;
+
+      console.log('📊 Vendor stats:', { totalVendors, activeVendors, pendingVendors, approvedVendors, rejectedVendors });
+
+      return ctx.send({
+        success: true,
+        data: {
+          totalVendors,
+          activeVendors,
+          pendingVendors,
+          approvedVendors,
+          rejectedVendors
+        }
+      });
+    } catch (error) {
+      console.error('Error getting vendor stats:', error);
+      return ctx.internalServerError('Failed to get vendor statistics');
+    }
+  },
+
+  // Admin method to get all vendors with user details
+  async findAllForAdmin(ctx) {
+    try {
+      console.log('🔍 findAllForAdmin called by user:', ctx.state.user?.id, ctx.state.user?.role?.name);
+
+      // Check if user is admin
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
+        console.log('❌ Access denied - not an admin');
+        return ctx.forbidden('Admin access required');
+      }
+
+      // Get all vendors with user and product data
+      const vendors = await strapi.entityService.findMany('api::vendor.vendor', {
+        populate: ['user', 'products', 'profileImage']
+      });
+
+      console.log('📊 Found vendors:', vendors.length);
+
+      return ctx.send({
+        success: true,
+        data: vendors
+      });
+    } catch (error) {
+      console.error('Error getting vendors for admin:', error);
+      return ctx.internalServerError('Failed to get vendors');
     }
   }
 })); 

@@ -8,6 +8,131 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const invoiceService = require('../services/invoice');
 
 module.exports = createCoreController('api::order.order', ({ strapi }) => ({
+
+
+  // Update order status and create notifications
+  async updateStatus(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { status, reason } = ctx.request.body;
+      
+      console.log('🔍 updateStatus called with:', { id, status, reason });
+      console.log('🔍 User:', ctx.state.user?.id, ctx.state.user?.role?.name);
+      
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'seller') {
+        console.log('❌ Access denied - not a seller');
+        return ctx.forbidden('Seller access required');
+      }
+
+      // Get the order - try by documentId first, then by numeric ID
+      let order = await strapi.entityService.findMany('api::order.order', {
+        filters: { documentId: id },
+        populate: ['vendor', 'user', 'products']
+      });
+
+      if (order && order.length > 0) {
+        order = order[0];
+        console.log('🔍 Found order by documentId:', order.id, order.orderNumber, order.vendor?.id);
+      } else {
+        // Try by numeric ID as fallback
+        order = await strapi.entityService.findOne('api::order.order', id, {
+          populate: ['vendor', 'user', 'products']
+        });
+        console.log('🔍 Found order by numeric ID:', order?.id, order?.orderNumber, order?.vendor?.id);
+      }
+
+      if (!order) {
+        console.log('❌ Order not found by documentId or numeric ID');
+        return ctx.notFound('Order not found');
+      }
+
+      // Check if seller owns this order
+      const vendor = await strapi.entityService.findMany('api::vendor.vendor', {
+        filters: { user: ctx.state.user.id }
+      });
+
+      console.log('🔍 Seller vendors:', vendor.map(v => ({ id: v.id, name: v.name })));
+      console.log('🔍 Order vendor ID:', order.vendor?.id);
+      console.log('🔍 Seller vendor ID:', vendor[0]?.id);
+
+      if (!vendor || vendor.length === 0) {
+        console.log('❌ Seller has no vendor');
+        return ctx.forbidden('You must have a vendor account to update orders');
+      }
+
+      if (order.vendor?.id !== vendor[0].id) {
+        console.log('❌ Vendor mismatch');
+        return ctx.forbidden('You can only update orders for your own vendor');
+      }
+
+      // Update the order status using the numeric ID
+      console.log('🔧 Updating order with ID:', order.id, 'to status:', status);
+      const updatedOrder = await strapi.entityService.update('api::order.order', order.id, {
+        data: { 
+          status,
+          statusReason: reason,
+          statusUpdatedAt: new Date()
+        },
+        populate: ['vendor', 'user', 'products']
+      });
+      
+      console.log('✅ Order updated successfully:', updatedOrder.id, updatedOrder.status);
+
+      // Create notification for the customer
+      if (order.user) {
+        let notificationTitle, notificationMessage;
+        
+        switch (status) {
+          case 'accepted':
+            notificationTitle = 'Order Accepted';
+            notificationMessage = `Your order #${order.orderNumber} has been accepted and is being processed.`;
+            break;
+          case 'rejected':
+            notificationTitle = 'Order Rejected';
+            notificationMessage = `Your order #${order.orderNumber} has been rejected. ${reason ? `Reason: ${reason}` : ''}`;
+            break;
+          case 'shipped':
+            notificationTitle = 'Order Shipped';
+            notificationMessage = `Your order #${order.orderNumber} has been shipped and is on its way to you.`;
+            break;
+          case 'delivered':
+            notificationTitle = 'Order Delivered';
+            notificationMessage = `Your order #${order.orderNumber} has been delivered. Thank you for your purchase!`;
+            break;
+          default:
+            notificationTitle = 'Order Status Updated';
+            notificationMessage = `Your order #${order.orderNumber} status has been updated to ${status}.`;
+        }
+
+        const notificationData = {
+          title: notificationTitle,
+          message: notificationMessage,
+          type: 'order',
+          user: order.user.id,
+          vendor: order.vendor.id,
+          order: order.id,
+          actionUrl: `/orders/${order.id}`,
+          actionText: 'View Order',
+          isImportant: status === 'rejected' || status === 'delivered'
+        };
+
+        console.log('🔔 Creating order status notification:', notificationData);
+
+        const notification = await strapi.entityService.create('api::notification.notification', {
+          data: notificationData,
+          populate: ['user', 'vendor', 'order']
+        });
+        
+        console.log('✅ Order status notification created:', notification);
+      }
+
+      return { data: updatedOrder };
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      return ctx.internalServerError('Failed to update order status');
+    }
+  },
+
   async find(ctx) {
     try {
       console.log('🔍 Order find called - User:', ctx.state.user?.role?.name);
@@ -437,6 +562,58 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const response = await strapi.service('api::order.order').create({ data: orderData });
 
     console.log('✅ Order created successfully:', response.id);
+
+          // Create notification for the vendor
+      try {
+        const orderWithVendor = await strapi.entityService.findOne('api::order.order', response.id, {
+          populate: {
+            vendor: {
+              populate: ['user']
+            },
+            user: true
+          }
+        });
+
+        console.log('🔍 Order with vendor data:', {
+          orderId: orderWithVendor.id,
+          vendorId: orderWithVendor.vendor?.id,
+          vendorUser: orderWithVendor.vendor?.user?.id,
+          vendorUserData: orderWithVendor.vendor?.user
+        });
+
+        if (orderWithVendor.vendor && orderWithVendor.vendor.user) {
+          console.log('🔔 Creating notification for vendor:', orderWithVendor.vendor.user.id);
+          
+          const notificationData = {
+            title: 'New Order Received',
+            message: `You have received a new order #${orderWithVendor.orderNumber} from ${orderWithVendor.customerName}`,
+            type: 'order',
+            user: orderWithVendor.vendor.user.id,
+            vendor: orderWithVendor.vendor.id,
+            order: orderWithVendor.id,
+            actionUrl: `/orders/${orderWithVendor.id}`,
+            actionText: 'View Order',
+            isImportant: true
+          };
+
+          console.log('🔔 Notification data:', notificationData);
+
+          const notification = await strapi.entityService.create('api::notification.notification', {
+            data: notificationData,
+            populate: ['user', 'vendor', 'order']
+          });
+          
+          console.log('✅ Notification created successfully:', notification);
+        } else {
+          console.log('⚠️ No vendor or vendor user found for notification');
+          console.log('🔍 Vendor data:', orderWithVendor.vendor);
+          console.log('🔍 Vendor user data:', orderWithVendor.vendor?.user);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating notification:', notificationError);
+        console.error('❌ Error details:', notificationError.message);
+        // Don't fail the order creation if notification fails
+      }
 
     // Return the created order
     return this.transformResponse(response);

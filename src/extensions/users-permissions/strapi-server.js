@@ -8,11 +8,15 @@ module.exports = (plugin) => {
     async update(ctx) {
       try {
         console.log('🎯 CUSTOM CONTROLLER: update method called!');
+        console.log('🔍 Request body:', ctx.request.body);
+        console.log('🔍 Request body type:', typeof ctx.request.body);
+        console.log('🔍 Request body keys:', Object.keys(ctx.request.body));
         
         const { id } = ctx.params;
         const { data } = ctx.request.body;
         
         console.log('🔄 Updating user:', id, 'with data:', data);
+        console.log('🔍 Data type:', typeof data);
         
         // Ensure the user can only update their own profile
         if (ctx.state.user && ctx.state.user.id !== parseInt(id)) {
@@ -29,6 +33,9 @@ module.exports = (plugin) => {
         
         console.log('✅ Strapi entityService.update result:', updatedUser);
         console.log('📍 Addresses in updatedUser:', updatedUser.addresses);
+        console.log('🔍 Updated username:', updatedUser.username);
+        console.log('🔍 Updated email:', updatedUser.email);
+        console.log('🔍 Updated phone:', updatedUser.phone);
         
         // Sanitize the output to remove sensitive fields
         const sanitizedUser = {

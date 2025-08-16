@@ -1,19 +1,18 @@
 'use strict';
 
 /**
- * product router.
+ * notification router
  */
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-// Create a completely custom router without default policies
 module.exports = {
   routes: [
-    // Default product routes with no policies
+    // Default notification routes
     {
       method: 'GET',
-      path: '/products',
-      handler: 'product.find',
+      path: '/notifications',
+      handler: 'notification.find',
       config: {
         policies: [],
         middlewares: [],
@@ -21,18 +20,17 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/products/:id',
-      handler: 'product.findOne',
+      path: '/notifications/:id',
+      handler: 'notification.findOne',
       config: {
         policies: [],
         middlewares: [],
       },
     },
-    // Create, Update, Delete routes
     {
       method: 'POST',
-      path: '/products',
-      handler: 'product.create',
+      path: '/notifications',
+      handler: 'notification.create',
       config: {
         policies: [],
         middlewares: [],
@@ -40,8 +38,8 @@ module.exports = {
     },
     {
       method: 'PUT',
-      path: '/products/:id',
-      handler: 'product.update',
+      path: '/notifications/:id',
+      handler: 'notification.update',
       config: {
         policies: [],
         middlewares: [],
@@ -49,18 +47,27 @@ module.exports = {
     },
     {
       method: 'DELETE',
-      path: '/products/:id',
-      handler: 'product.delete',
+      path: '/notifications/:id',
+      handler: 'notification.delete',
       config: {
         policies: [],
         middlewares: [],
       },
     },
-    // Admin-specific routes
+    // Custom routes for notifications
     {
       method: 'GET',
-      path: '/products/admin/all',
-      handler: 'product.findAllForAdmin',
+      path: '/notifications/user/:userId',
+      handler: 'notification.findForUser',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/notifications/vendor/:vendorId',
+      handler: 'notification.findForVendor',
       config: {
         policies: [],
         middlewares: [],
@@ -68,8 +75,8 @@ module.exports = {
     },
     {
       method: 'PUT',
-      path: '/products/:id/status',
-      handler: 'product.updateProductStatus',
+      path: '/notifications/:id/read',
+      handler: 'notification.markAsRead',
       config: {
         policies: [],
         middlewares: [],
@@ -77,8 +84,8 @@ module.exports = {
     },
     {
       method: 'PUT',
-      path: '/products/:id/toggle-active',
-      handler: 'product.toggleProductActive',
+      path: '/notifications/user/:userId/read-all',
+      handler: 'notification.markAllAsRead',
       config: {
         policies: [],
         middlewares: [],
@@ -86,27 +93,26 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/products/admin/stats',
-      handler: 'product.getProductStats',
-      config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    // Custom routes
-    {
-      method: 'GET',
-      path: '/products/vendor/:vendorId',
-      handler: 'product.findByVendor',
+      path: '/notifications/user/:userId/unread-count',
+      handler: 'notification.getUnreadCount',
       config: {
         policies: [],
         middlewares: [],
       },
     },
     {
-      method: 'GET',
-      path: '/products/public-test',
-      handler: 'product.publicTest',
+      method: 'DELETE',
+      path: '/notifications/:id/delete',
+      handler: 'notification.deleteNotification',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'DELETE',
+      path: '/notifications/user/:userId/clear-all',
+      handler: 'notification.clearAll',
       config: {
         policies: [],
         middlewares: [],

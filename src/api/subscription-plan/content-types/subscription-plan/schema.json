@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscription_plans",
+  "info": {
+    "singularName": "subscription-plan",
+    "pluralName": "subscription-plans",
+    "displayName": "Subscription Plan",
+    "description": "Available subscription plans for sellers"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "price": {
+      "type": "decimal",
+      "precision": 10,
+      "scale": 2,
+      "required": true
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "duration": {
+      "type": "integer",
+      "required": true,
+      "description": "Duration in days"
+    },
+    "durationType": {
+      "type": "enumeration",
+      "enum": ["days", "weeks", "months", "years"],
+      "default": "months"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "isPopular": {
+      "type": "boolean",
+      "default": false
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "features": {
+      "type": "json",
+      "description": "Array of features included in this plan"
+    },
+    "maxProducts": {
+      "type": "integer",
+      "description": "Maximum number of products allowed"
+    },
+    "maxOrders": {
+      "type": "integer",
+      "description": "Maximum number of orders per month"
+    },
+    "commissionRate": {
+      "type": "decimal",
+      "precision": 5,
+      "scale": 2,
+      "description": "Commission rate percentage"
+    },
+    "subscriptions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::subscription.subscription",
+      "mappedBy": "plan"
+    }
+  }
+} 

@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriptions",
+  "info": {
+    "singularName": "subscription",
+    "pluralName": "subscriptions",
+    "displayName": "Subscription",
+    "description": "Seller subscription plans and payments"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "vendor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vendor.vendor",
+      "inversedBy": "subscriptions"
+    },
+    "plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscription-plan.subscription-plan"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "expired", "cancelled", "pending", "failed"],
+      "default": "pending"
+    },
+    "startDate": {
+      "type": "datetime"
+    },
+    "endDate": {
+      "type": "datetime"
+    },
+    "amount": {
+      "type": "decimal",
+      "precision": 10,
+      "scale": 2
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "paymentId": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "paymentMethod": {
+      "type": "string"
+    },
+    "autoRenew": {
+      "type": "boolean",
+      "default": false
+    },
+    "nextBillingDate": {
+      "type": "datetime"
+    },
+    "cancelledAt": {
+      "type": "datetime"
+    },
+    "cancellationReason": {
+      "type": "text"
+    },
+    "features": {
+      "type": "json"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+} 

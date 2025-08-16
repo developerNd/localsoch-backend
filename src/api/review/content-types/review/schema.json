@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reviews",
+  "info": {
+    "singularName": "review",
+    "pluralName": "reviews",
+    "displayName": "Review"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "rating": { 
+      "type": "integer", 
+      "required": true, 
+      "min": 1, 
+      "max": 5 
+    },
+    "comment": { "type": "text" },
+    "customerName": { "type": "string", "required": true },
+    "customerEmail": { "type": "email" },
+    "isVerified": { "type": "boolean", "default": true },
+    "isApproved": { "type": "boolean", "default": true },
+    "order": { 
+      "type": "relation", 
+      "relation": "manyToOne", 
+      "target": "api::order.order" 
+    },
+    "vendor": { 
+      "type": "relation", 
+      "relation": "manyToOne", 
+      "target": "api::vendor.vendor" 
+    },
+    "user": { 
+      "type": "relation", 
+      "relation": "manyToOne", 
+      "target": "plugin::users-permissions.user" 
+    }
+  }
+} 

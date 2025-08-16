@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "analytics_dashboard",
+  "info": {
+    "singularName": "analytics",
+    "pluralName": "dashboard-analytics",
+    "displayName": "Dashboard Analytics",
+    "description": "Dashboard analytics and statistics"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "totalRevenue": {
+      "type": "decimal",
+      "description": "Total platform revenue"
+    },
+    "totalOrders": {
+      "type": "integer",
+      "description": "Total number of orders"
+    },
+    "totalProducts": {
+      "type": "integer",
+      "description": "Total number of products"
+    },
+    "totalSellers": {
+      "type": "integer",
+      "description": "Total number of sellers"
+    },
+    "averageRating": {
+      "type": "decimal",
+      "description": "Average platform rating"
+    }
+  }
+} 

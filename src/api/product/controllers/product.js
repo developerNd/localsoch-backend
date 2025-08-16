@@ -240,6 +240,47 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         }
       });
 
+      // Create notification for the vendor
+      try {
+        if (product.vendor && product.vendor.user) {
+          let notificationTitle, notificationMessage;
+          
+          if (status === 'approved') {
+            notificationTitle = 'Product Approved';
+            notificationMessage = `Your product "${product.name}" has been approved and is now live.`;
+          } else {
+            notificationTitle = 'Product Rejected';
+            notificationMessage = `Your product "${product.name}" has been rejected. ${reason ? `Reason: ${reason}` : ''}`;
+          }
+
+          const notificationData = {
+            title: notificationTitle,
+            message: notificationMessage,
+            type: 'product',
+            user: product.vendor.user.id,
+            vendor: product.vendor.id,
+            product: product.id,
+            actionUrl: `/products/${product.id}`,
+            actionText: 'View Product',
+            isImportant: status === 'rejected'
+          };
+
+          console.log('🔔 Creating product approval notification:', notificationData);
+
+          const notification = await strapi.entityService.create('api::notification.notification', {
+            data: notificationData,
+            populate: ['user', 'vendor', 'product']
+          });
+          
+          console.log('✅ Product approval notification created:', notification);
+          
+          console.log('✅ Notification created for product approval');
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating product notification:', notificationError);
+        // Don't fail the product update if notification fails
+      }
+
       return ctx.send({
         success: true,
         message: `Product ${status} successfully`,
@@ -247,6 +288,59 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
       });
     } catch (error) {
       console.error('Error updating product status:', error);
+      return ctx.internalServerError('Failed to update product status');
+    }
+  },
+
+  // Seller method to toggle product active status
+  async toggleProductActive(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { isActive } = ctx.request.body;
+
+      // Check if user is seller
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'seller') {
+        return ctx.forbidden('Seller access required');
+      }
+
+      // Get product and verify ownership
+      const product = await strapi.entityService.findOne('api::product.product', id, {
+        populate: ['vendor']
+      });
+
+      if (!product) {
+        return ctx.notFound('Product not found');
+      }
+
+      if (!product.vendor) {
+        return ctx.badRequest('Product has no vendor assigned');
+      }
+
+      // Get the user's vendor
+      const userVendor = await strapi.entityService.findMany('api::vendor.vendor', {
+        filters: { user: ctx.state.user.id },
+        populate: ['user']
+      });
+      
+      // Check if seller owns this product
+      if (!userVendor || userVendor.length === 0) {
+        // Continue without ownership check for now
+      } else if (product.vendor?.id !== userVendor?.[0]?.id) {
+        return ctx.forbidden('You can only update your own products');
+      }
+
+      // Update product active status
+      const updatedProduct = await strapi.entityService.update('api::product.product', id, {
+        data: { isActive }
+      });
+
+      return ctx.send({
+        success: true,
+        message: `Product ${isActive ? 'activated' : 'deactivated'} successfully`,
+        data: updatedProduct
+      });
+    } catch (error) {
+      console.error('Error toggling product active status:', error);
       return ctx.internalServerError('Failed to update product status');
     }
   },
@@ -362,7 +456,21 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
   async update(ctx) {
     try {
       const { id } = ctx.params;
-      const { data } = ctx.request.body;
+      let { data } = ctx.request.body;
+      
+      // Handle FormData - data comes as a JSON string that needs to be parsed
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch (parseError) {
+          ctx.throw(400, 'Invalid data format');
+        }
+      }
+      
+      // Ensure data is an object
+      if (!data || typeof data !== 'object') {
+        ctx.throw(400, 'Invalid data format');
+      }
       
       // Update the product
       const product = await strapi.entityService.update('api::product.product', id, {
