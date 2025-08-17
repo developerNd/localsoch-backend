@@ -27,7 +27,21 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
       // Add populate for vendor and image by default
       if (!query.populate) {
         query.populate = ['vendor', 'image', 'category'];
+      } else {
+        // Handle populate parameter correctly
+        if (query.populate === '*' || query.populate.includes('*')) {
+          // If populate is '*' or contains '*', don't add additional fields
+          query.populate = '*';
+        } else {
+          // Ensure vendor is always populated for location filtering
+          const populateArray = Array.isArray(query.populate) ? query.populate : query.populate.split(',');
+          if (!populateArray.includes('vendor')) {
+            query.populate = [...populateArray, 'vendor'];
+          }
+        }
       }
+      
+      console.log('🔍 PRODUCT CONTROLLER: Final populate:', query.populate);
       
       // Handle vendor filtering
       if (query.filters && query.filters.vendor) {
@@ -41,16 +55,133 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         }
       }
 
+      // Handle location-based filtering by vendor pincode
+      if (query.filters && query.filters.location) {
+        const locationFilter = query.filters.location;
+        console.log('🔍 PRODUCT CONTROLLER: Location filter received:', locationFilter);
+        
+        // Initialize vendor filter if it doesn't exist
+        if (!query.filters.vendor) {
+          query.filters.vendor = {};
+        }
+        
+        // Debug: Check if products exist without location filtering
+        console.log('🔍 PRODUCT CONTROLLER: Testing products without location filter...');
+        
+        // Filter by vendor pincode
+        if (locationFilter.pincode) {
+          console.log('🔍 PRODUCT CONTROLLER: Adding vendor pincode filter:', locationFilter.pincode);
+          // Try a different approach - filter by vendor ID instead of vendor.pincode
+          try {
+            const vendorsWithPincode = await strapi.entityService.findMany('api::vendor.vendor', {
+              filters: { pincode: locationFilter.pincode }
+            });
+            
+            if (vendorsWithPincode.length > 0) {
+              const vendorIds = vendorsWithPincode.map(v => v.id);
+              console.log('🔍 PRODUCT CONTROLLER: Found vendor IDs with pincode:', vendorIds);
+              query.filters.vendor = {
+                id: {
+                  $in: vendorIds
+                }
+              };
+            } else {
+              console.log('🔍 PRODUCT CONTROLLER: No vendors found with pincode:', locationFilter.pincode);
+              // Set empty result filter
+              query.filters.id = { $eq: -1 }; // This will return no results
+            }
+          } catch (error) {
+            console.log('🔍 PRODUCT CONTROLLER: Error finding vendors by pincode:', error.message);
+            // Fallback to original method
+            query.filters.vendor.pincode = {
+              $eq: locationFilter.pincode
+            };
+          }
+        }
+        
+        // Filter by vendor city (temporarily disabled for debugging)
+        if (locationFilter.city) {
+          console.log('🔍 PRODUCT CONTROLLER: City filter disabled for debugging');
+        }
+        
+        // Filter by vendor state (temporarily disabled for debugging)
+        if (locationFilter.state) {
+          console.log('🔍 PRODUCT CONTROLLER: State filter disabled for debugging');
+        }
+        
+        console.log('🔍 PRODUCT CONTROLLER: Final vendor filter:', query.filters.vendor);
+        
+        // Remove the location filter from query as we've processed it
+        delete query.filters.location;
+      }
+
       // For admin, add additional filtering options
       if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'admin') {
-        // Ensure we populate vendor data for admin
-        if (!query.populate.includes('vendor')) {
-          query.populate = [...query.populate.split(','), 'vendor'];
+        // Ensure we populate vendor data for admin (only if not using '*')
+        if (query.populate !== '*') {
+          const populateArray = Array.isArray(query.populate) ? query.populate : query.populate.split(',');
+          if (!populateArray.includes('vendor')) {
+            query.populate = [...populateArray, 'vendor'];
+          }
         }
       }
       
+      // Log the final query before execution
+      console.log('🔍 PRODUCT CONTROLLER: Final query filters:', query.filters);
+      console.log('🔍 PRODUCT CONTROLLER: Final query populate:', query.populate);
+      
       // Call the default find method
       const { data, meta } = await super.find(ctx);
+      
+      console.log('🔍 PRODUCT CONTROLLER: Query result - data count:', data?.length || 0);
+      
+      // Debug: Check if there are any vendors with the target pincode
+      if (query.filters && query.filters.vendor && query.filters.vendor.pincode) {
+        try {
+          const targetPincode = query.filters.vendor.pincode.$eq;
+          console.log('🔍 PRODUCT CONTROLLER: Debug - checking vendors with pincode:', targetPincode);
+          
+          const vendorsWithPincode = await strapi.entityService.findMany('api::vendor.vendor', {
+            filters: { pincode: targetPincode },
+            populate: ['products']
+          });
+          
+          console.log('🔍 PRODUCT CONTROLLER: Debug - vendors found with pincode:', vendorsWithPincode.length);
+          vendorsWithPincode.forEach(vendor => {
+            console.log('🔍 PRODUCT CONTROLLER: Debug - vendor:', {
+              id: vendor.id,
+              name: vendor.name,
+              pincode: vendor.pincode,
+              productsCount: vendor.products?.length || 0
+            });
+          });
+        } catch (debugError) {
+          console.log('🔍 PRODUCT CONTROLLER: Debug error:', debugError.message);
+        }
+      }
+      
+      // Debug: Check all products without any filters (simplified)
+      try {
+        console.log('🔍 PRODUCT CONTROLLER: Debug - checking all products without filters...');
+        const allProducts = await strapi.entityService.findMany('api::product.product', {
+          populate: ['vendor']
+        });
+        
+        console.log('🔍 PRODUCT CONTROLLER: Debug - total products in system:', allProducts.length);
+        if (allProducts.length > 0) {
+          allProducts.slice(0, 5).forEach(product => {
+            console.log('🔍 PRODUCT CONTROLLER: Debug - product:', {
+              id: product.id,
+              name: product.name,
+              vendorId: product.vendor?.id,
+              vendorName: product.vendor?.name,
+              vendorPincode: product.vendor?.pincode
+            });
+          });
+        }
+      } catch (debugError) {
+        console.log('🔍 PRODUCT CONTROLLER: Debug error checking all products:', debugError.message);
+      }
       
       return { data, meta };
     } catch (error) {

@@ -8,7 +8,7 @@
     "description": "Business categories for seller registration"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
@@ -35,4 +35,4 @@
       "mappedBy": "businessCategory"
     }
   }
-} 
+}

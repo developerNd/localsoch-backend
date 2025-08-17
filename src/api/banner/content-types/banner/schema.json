@@ -44,11 +44,19 @@
     },
     "actionType": {
       "type": "enumeration",
-      "enum": ["product_list", "category", "product_details", "cart", "external_link"],
+      "enum": ["product_list", "category", "product_details", "cart", "external_link", "seller"],
       "default": "product_list"
     },
     "actionData": {
       "type": "json"
+    },
+    "externalLink": {
+      "type": "string",
+      "description": "External URL to open when action type is external_link"
+    },
+    "sellerId": {
+      "type": "integer",
+      "description": "Seller ID to navigate to when action type is seller"
     },
     "isActive": {
       "type": "boolean",

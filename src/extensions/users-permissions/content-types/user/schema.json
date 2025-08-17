@@ -80,6 +80,12 @@
     },
     "addresses": {
       "type": "json"
+    },
+    "profileImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
     }
   }
 } 

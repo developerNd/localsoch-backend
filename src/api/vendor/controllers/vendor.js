@@ -11,6 +11,9 @@ const path = require('path');
 
 module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
   async find(ctx) {
+    console.log('🔍 VENDOR CONTROLLER: find method called');
+    console.log('🔍 VENDOR CONTROLLER: Query params:', ctx.query);
+    
     // Check if this is an admin stats request
     if (ctx.query.admin === 'stats' && ctx.state.user?.role?.name === 'admin') {
       return await this.getVendorStats(ctx);
@@ -29,18 +32,108 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         user: ctx.state.user.id
       };
     }
+
+    // Handle location-based filtering
+    if (ctx.query.filters && ctx.query.filters.location) {
+      const locationFilter = ctx.query.filters.location;
+      console.log('🔍 VENDOR CONTROLLER: Location filter received:', locationFilter);
+      
+      // Create an OR condition for location matching
+      const locationConditions = [];
+      
+      // Filter by pincode (exact match)
+      if (locationFilter.pincode) {
+        console.log('🔍 VENDOR CONTROLLER: Adding pincode filter:', locationFilter.pincode);
+        locationConditions.push({
+          pincode: {
+            $eq: locationFilter.pincode
+          }
+        });
+      }
+      
+      // Filter by city (case-insensitive contains)
+      if (locationFilter.city) {
+        console.log('🔍 VENDOR CONTROLLER: Adding city filter:', locationFilter.city);
+        locationConditions.push({
+          city: {
+            $containsi: locationFilter.city
+          }
+        });
+      }
+      
+      // Filter by state (case-insensitive contains)
+      if (locationFilter.state) {
+        console.log('🔍 VENDOR CONTROLLER: Adding state filter:', locationFilter.state);
+        locationConditions.push({
+          state: {
+            $containsi: locationFilter.state
+          }
+        });
+      }
+      
+      // Apply OR condition if we have any location filters
+      if (locationConditions.length > 0) {
+        ctx.query.filters.$or = locationConditions;
+        console.log('🔍 VENDOR CONTROLLER: Final OR filters:', ctx.query.filters.$or);
+      }
+      
+      console.log('🔍 VENDOR CONTROLLER: Final filters:', ctx.query.filters);
+      
+      // Remove the location filter from query as we've processed it
+      delete ctx.query.filters.location;
+    }
     
-    // For admin, allow additional filtering and population
-    if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'admin') {
-      // Ensure we populate user data for admin
-      if (!ctx.query.populate) {
-        ctx.query.populate = ['user', 'products', 'buttonClicks', 'businessCategory'];
-      } else if (!ctx.query.populate.includes('user')) {
-        ctx.query.populate = [...ctx.query.populate.split(','), 'user', 'products', 'buttonClicks', 'businessCategory'];
+    // Always ensure businessCategory is populated
+    if (ctx.query.populate === '*' || ctx.query.populate?.includes('*')) {
+      // For populate=*, we need to preserve all fields and add businessCategory
+      ctx.query.populate = '*';
+      // We'll handle businessCategory population in the response
+    } else if (ctx.query.populate) {
+      // If specific populate is requested, add businessCategory if not present
+      const populateArray = Array.isArray(ctx.query.populate) ? ctx.query.populate : ctx.query.populate.split(',');
+      if (!populateArray.includes('businessCategory')) {
+        populateArray.push('businessCategory');
+        ctx.query.populate = populateArray;
+      }
+    } else {
+      // If no populate specified, add businessCategory
+      ctx.query.populate = ['businessCategory'];
+    }
+    
+    console.log('🔍 VENDOR CONTROLLER: Final query before super.find:', ctx.query);
+    
+    const { data, meta } = await super.find(ctx);
+    
+    // Manually populate businessCategory if it's not already populated
+    if (data && data.length > 0) {
+      for (const vendor of data) {
+        if (!vendor.businessCategory) {
+          try {
+            // Get the business category for this vendor
+            const businessCategoryLink = await strapi.db.query('api::vendor.vendor').findOne({
+              where: { id: vendor.id },
+              populate: ['businessCategory']
+            });
+            
+            if (businessCategoryLink?.businessCategory) {
+              vendor.businessCategory = businessCategoryLink.businessCategory;
+            }
+          } catch (error) {
+            console.log('Error populating business category for vendor:', vendor.id, error.message);
+          }
+        }
       }
     }
     
-    const { data, meta } = await super.find(ctx);
+    console.log('🔍 VENDOR CONTROLLER: Result from super.find:', {
+      dataCount: data?.length || 0,
+      firstVendor: data?.[0] ? {
+        id: data[0].id,
+        name: data[0].name,
+        businessCategory: data[0].businessCategory
+      } : null
+    });
+    
     return { data, meta };
   },
 
@@ -552,10 +645,17 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
 
       console.log('🔍 Final updateData:', updateData);
       
+      // Handle business category relationship
+      if (updateData.businessCategoryId) {
+        updateData.businessCategory = updateData.businessCategoryId;
+        delete updateData.businessCategoryId;
+        console.log('🔍 Converted businessCategoryId to businessCategory:', updateData.businessCategory);
+      }
+      
       // Update the vendor
       const updatedVendor = await strapi.entityService.update('api::vendor.vendor', id, {
         data: updateData,
-        populate: ['user', 'profileImage', 'buttonConfig', 'buttonClicks']
+        populate: ['user', 'profileImage', 'buttonConfig', 'buttonClicks', 'businessCategory']
       });
 
       console.log('🔍 Updated vendor result:', updatedVendor);

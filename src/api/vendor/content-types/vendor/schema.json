@@ -10,37 +10,94 @@
     "draftAndPublish": false
   },
   "attributes": {
-    "name": { "type": "string", "required": true },
-    "description": { "type": "text" },
-    "address": { "type": "text" },
-    "city": { "type": "string" },
-    "state": { "type": "string" },
-    "pincode": { "type": "string" },
-    "contact": { "type": "string" },
-    "whatsapp": { "type": "string" },
-    "email": { "type": "email" },
-    "gstNumber": { "type": "string" },
-    "bankAccountNumber": { "type": "string" },
-    "ifscCode": { "type": "string" },
-    "businessType": { "type": "string" },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "address": {
+      "type": "text"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "pincode": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "gstNumber": {
+      "type": "string"
+    },
+    "bankAccountNumber": {
+      "type": "string"
+    },
+    "ifscCode": {
+      "type": "string"
+    },
+    "businessType": {
+      "type": "string"
+    },
     "businessCategory": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::business-category.business-category",
       "inversedBy": "vendors"
     },
-    "isActive": { "type": "boolean", "default": true },
-    "isApproved": { "type": "boolean", "default": false },
-    "status": { 
-      "type": "enumeration", 
-      "enum": ["pending", "approved", "rejected", "suspended"],
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "isApproved": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "suspended"
+      ],
       "default": "pending"
     },
-    "statusReason": { "type": "text" },
-    "statusUpdatedAt": { "type": "datetime" },
-    "user": { "type": "relation", "relation": "oneToOne", "target": "plugin::users-permissions.user" },
-    "products": { "type": "relation", "relation": "oneToMany", "target": "api::product.product", "mappedBy": "vendor" },
-    "profileImage": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "statusReason": {
+      "type": "text"
+    },
+    "statusUpdatedAt": {
+      "type": "datetime"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product",
+      "mappedBy": "vendor"
+    },
+    "profileImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "buttonConfig": {
       "type": "component",
       "component": "vendor.button-config",
@@ -64,4 +121,4 @@
       "mappedBy": "vendor"
     }
   }
-} 
+}

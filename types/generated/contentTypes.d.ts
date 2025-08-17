@@ -483,7 +483,14 @@ export interface ApiBannerBanner extends Struct.CollectionTypeSchema {
     actionText: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Shop Now'>;
     actionType: Schema.Attribute.Enumeration<
-      ['product_list', 'category', 'product_details', 'cart', 'external_link']
+      [
+        'product_list',
+        'category',
+        'product_details',
+        'cart',
+        'external_link',
+        'seller',
+      ]
     > &
       Schema.Attribute.DefaultTo<'product_list'>;
     backgroundColor: Schema.Attribute.String &
@@ -493,6 +500,7 @@ export interface ApiBannerBanner extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     description: Schema.Attribute.Text;
     endDate: Schema.Attribute.DateTime;
+    externalLink: Schema.Attribute.String;
     image: Schema.Attribute.Media<'images'>;
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -502,6 +510,7 @@ export interface ApiBannerBanner extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    sellerId: Schema.Attribute.Integer;
     sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     startDate: Schema.Attribute.DateTime;
     subtitle: Schema.Attribute.String &
@@ -534,7 +543,7 @@ export interface ApiBusinessCategoryBusinessCategory
     singularName: 'business-category';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     createdAt: Schema.Attribute.DateTime;
@@ -1636,6 +1645,7 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     phone: Schema.Attribute.String;
+    profileImage: Schema.Attribute.Media<'images'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     referralCount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
