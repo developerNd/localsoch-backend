@@ -64,5 +64,14 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+      method: 'PUT',
+      path: '/orders/:id/status/admin',
+      handler: 'order.updateOrderStatusByAdmin',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

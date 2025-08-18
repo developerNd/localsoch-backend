@@ -81,6 +81,15 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  {
+    method: 'DELETE',
+    path: '/vendors/:id',
+    handler: 'vendor.delete',
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes); 

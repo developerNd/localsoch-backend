@@ -1176,5 +1176,53 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       console.error('Error getting vendors for admin:', error);
       return ctx.internalServerError('Failed to get vendors');
     }
+  },
+
+  // Admin method to delete vendor
+  async delete(ctx) {
+    try {
+      console.log('🔍 delete vendor called by user:', ctx.state.user?.id, ctx.state.user?.role?.name);
+
+      // Check if user is admin
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
+        console.log('❌ Access denied - not an admin');
+        return ctx.forbidden('Admin access required');
+      }
+
+      const { id } = ctx.params;
+      console.log('🔍 Deleting vendor with ID:', id);
+
+      // Get the vendor first to check if it exists
+      const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
+        populate: ['user', 'products']
+      });
+
+      if (!vendor) {
+        console.log('❌ Vendor not found');
+        return ctx.notFound('Vendor not found');
+      }
+
+      console.log('🔍 Found vendor to delete:', vendor.name);
+
+      // Check if vendor has products
+      if (vendor.products && vendor.products.length > 0) {
+        console.log('❌ Cannot delete vendor with products');
+        return ctx.badRequest('Cannot delete vendor with active products. Please delete all products first.');
+      }
+
+      // Delete the vendor
+      const deletedVendor = await strapi.entityService.delete('api::vendor.vendor', id);
+
+      console.log('✅ Vendor deleted successfully:', deletedVendor.name);
+
+      return ctx.send({
+        success: true,
+        message: 'Vendor deleted successfully',
+        data: deletedVendor
+      });
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      return ctx.internalServerError('Failed to delete vendor');
+    }
   }
 })); 
