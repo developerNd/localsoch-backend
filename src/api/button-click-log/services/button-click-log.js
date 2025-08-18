@@ -10,12 +10,53 @@ module.exports = createCoreService('api::button-click-log.button-click-log', ({ 
   // Custom method to log a button click
   async logButtonClick(data) {
     try {
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: === SERVICE CALLED ===');
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: Received data (full):', JSON.stringify(data, null, 2));
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: Data type:', typeof data);
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: Data keys:', Object.keys(data || {}));
+      
+      // Prepare the data for creation
+      const createData = {
+        buttonType: data.buttonType,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        clickedAt: data.clickedAt || new Date(),
+        referrer: data.referrer,
+        sessionId: data.sessionId
+      };
+
+      // Add vendor relation if provided
+      if (data.vendor) {
+        createData.vendor = data.vendor;
+      }
+
+      // Add userInfo component if provided
+      if (data.userInfo) {
+        createData.userInfo = data.userInfo;
+      }
+
+      // Add deviceInfo component if provided
+      if (data.deviceInfo) {
+        createData.deviceInfo = data.deviceInfo;
+      }
+
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: Final create data (full):', JSON.stringify(createData, null, 2));
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: About to create entity...');
+
       const logEntry = await strapi.entityService.create('api::button-click-log.button-click-log', {
-        data: {
-          ...data,
-          clickedAt: data.clickedAt || new Date()
-        }
+        data: createData
       });
+
+      console.log('🔍 BUTTON-CLICK-LOG SERVICE: Entity created successfully:', logEntry);
+
+      console.log('✅ BUTTON-CLICK-LOG SERVICE: Log entry created successfully:', logEntry);
+
+      // Fetch the created entry with populated components
+      const populatedLogEntry = await strapi.entityService.findOne('api::button-click-log.button-click-log', logEntry.id, {
+        populate: ['userInfo', 'deviceInfo', 'vendor']
+      });
+
+      console.log('✅ BUTTON-CLICK-LOG SERVICE: Populated log entry:', populatedLogEntry);
 
       // Update vendor's button clicks count
       if (data.vendor) {

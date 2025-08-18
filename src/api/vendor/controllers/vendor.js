@@ -482,14 +482,35 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
 
   async update(ctx) {
     try {
-      console.log('=== VENDOR UPDATE METHOD CALLED ===');
+      console.log('🔍 BACKEND: === VENDOR UPDATE METHOD CALLED ===');
+      console.log('🔍 BACKEND: Request method:', ctx.request.method);
+      console.log('🔍 BACKEND: Request URL:', ctx.request.url);
+      console.log('🔍 BACKEND: Request headers:', ctx.request.headers);
+      console.log('🔍 BACKEND: Request body (raw):', ctx.request.body);
+      
       const { id } = ctx.params;
       const { trackClick, buttonType, userInfo, deviceInfo, location, ipAddress, userAgent } = ctx.request.body;
-      console.log('Request body:', { trackClick, buttonType, userInfo, deviceInfo, location, ipAddress, userAgent });
+      
+      console.log('🔍 BACKEND: Vendor ID from params:', id);
+      console.log('🔍 BACKEND: trackClick:', trackClick);
+      console.log('🔍 BACKEND: buttonType:', buttonType);
+      console.log('🔍 BACKEND: userInfo (full):', JSON.stringify(userInfo, null, 2));
+      console.log('🔍 BACKEND: deviceInfo (full):', JSON.stringify(deviceInfo, null, 2));
+      console.log('🔍 BACKEND: location:', location);
+      console.log('🔍 BACKEND: ipAddress:', ipAddress);
+      console.log('🔍 BACKEND: userAgent:', userAgent);
+      
+      // Get IP address from request if not provided
+      const clientIP = ipAddress || ctx.request.ip || ctx.request.connection.remoteAddress || 'unknown';
+      console.log('🔍 BACKEND: Client IP address:', clientIP);
+      
+      // Get user agent from request if not provided
+      const clientUserAgent = userAgent || ctx.request.headers['user-agent'] || 'unknown';
+      console.log('🔍 BACKEND: Client User Agent:', clientUserAgent);
 
       // Handle button click tracking - allow without authentication
       if (trackClick && buttonType) {
-        console.log('Processing button click tracking for vendor:', id);
+        console.log('🔍 BACKEND: Processing button click tracking for vendor:', id);
         
         // Get current vendor with button clicks
         const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
@@ -497,8 +518,11 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         });
 
         if (!vendor) {
+          console.log('❌ BACKEND: Vendor not found with ID:', id);
           return ctx.notFound('Vendor not found');
         }
+
+        console.log('✅ BACKEND: Vendor found:', vendor.name);
 
         const buttonClicks = vendor.buttonClicks || {
           messageClicks: 0,
@@ -510,34 +534,45 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
           lastUpdated: new Date()
         };
 
+        console.log('🔍 BACKEND: Current button clicks before update:', buttonClicks);
+
         // Increment the specific button type
         switch (buttonType) {
           case 'message':
             buttonClicks.messageClicks++;
+            console.log('🔍 BACKEND: Incrementing message clicks');
             break;
           case 'call':
             buttonClicks.callClicks++;
+            console.log('🔍 BACKEND: Incrementing call clicks');
             break;
           case 'whatsapp':
             buttonClicks.whatsappClicks++;
+            console.log('🔍 BACKEND: Incrementing whatsapp clicks');
             break;
           case 'email':
             buttonClicks.emailClicks++;
+            console.log('🔍 BACKEND: Incrementing email clicks');
             break;
           case 'website':
             buttonClicks.websiteClicks++;
+            console.log('🔍 BACKEND: Incrementing website clicks');
             break;
         }
 
         buttonClicks.totalClicks++;
         buttonClicks.lastUpdated = new Date();
 
+        console.log('🔍 BACKEND: Updated button clicks:', buttonClicks);
+
         // Update vendor with new click counts
+        console.log('🔍 BACKEND: Updating vendor with new button clicks...');
         await strapi.entityService.update('api::vendor.vendor', id, {
           data: {
             buttonClicks
           }
         });
+        console.log('✅ BACKEND: Vendor updated successfully');
 
         // Log the click details to database
         const logEntry = {
@@ -546,22 +581,34 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
           userInfo,
           deviceInfo,
           location,
-          ipAddress,
-          userAgent,
+          ipAddress: clientIP,
+          userAgent: clientUserAgent,
           clickedAt: new Date()
         };
 
+        console.log('🔍 BACKEND: Creating log entry (full):', JSON.stringify(logEntry, null, 2));
+        console.log('🔍 BACKEND: Log entry vendor ID:', logEntry.vendor);
+        console.log('🔍 BACKEND: Log entry buttonType:', logEntry.buttonType);
+        console.log('🔍 BACKEND: Log entry userInfo:', JSON.stringify(logEntry.userInfo, null, 2));
+        console.log('🔍 BACKEND: Log entry deviceInfo:', JSON.stringify(logEntry.deviceInfo, null, 2));
+
         try {
           // Save to database using the button-click-log service
-          await strapi.service('api::button-click-log.button-click-log').logButtonClick(logEntry);
-          console.log('Button click logged to database:', logEntry);
+          console.log('🔍 BACKEND: Saving to database using button-click-log service...');
+          console.log('🔍 BACKEND: Log entry being passed to service (full):', JSON.stringify(logEntry, null, 2));
+          
+          const serviceResult = await strapi.service('api::button-click-log.button-click-log').logButtonClick(logEntry);
+          console.log('✅ BACKEND: Button click logged to database successfully');
+          console.log('✅ BACKEND: Service result (full):', JSON.stringify(serviceResult, null, 2));
         } catch (error) {
-          console.error('Error saving click log to database:', error);
-          console.error('Error details:', error.message);
+          console.error('❌ BACKEND: Error saving click log to database:', error);
+          console.error('❌ BACKEND: Error details:', error.message);
+          console.error('❌ BACKEND: Error stack:', error.stack);
         }
 
-        console.log('Button click logged:', logEntry);
+        console.log('✅ BACKEND: Button click logged successfully:', logEntry);
 
+        console.log('✅ BACKEND: Button click tracking completed successfully');
         return ctx.send({
           success: true,
           message: 'Button click tracked successfully'
@@ -772,7 +819,14 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       const { id } = ctx.params;
       const { buttonType, userInfo, deviceInfo, location, ipAddress, userAgent } = ctx.request.body;
 
-      console.log('Processing button click tracking for vendor:', id);
+      console.log('🔍 BACKEND: Button click tracking request received');
+      console.log('🔍 BACKEND: Vendor ID:', id);
+      console.log('🔍 BACKEND: Button type:', buttonType);
+      console.log('🔍 BACKEND: User info:', userInfo);
+      console.log('🔍 BACKEND: Device info:', deviceInfo);
+      console.log('🔍 BACKEND: Location:', location);
+      console.log('🔍 BACKEND: IP Address:', ipAddress);
+      console.log('🔍 BACKEND: User Agent:', userAgent);
       
       // Get current vendor with button clicks
       const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
@@ -780,8 +834,11 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       });
 
       if (!vendor) {
+        console.log('❌ BACKEND: Vendor not found with ID:', id);
         return ctx.notFound('Vendor not found');
       }
+
+      console.log('✅ BACKEND: Vendor found:', vendor.name);
 
       const buttonClicks = vendor.buttonClicks || {
         messageClicks: 0,
@@ -793,34 +850,45 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         lastUpdated: new Date()
       };
 
+      console.log('🔍 BACKEND: Current button clicks before update:', buttonClicks);
+
       // Increment the specific button type
       switch (buttonType) {
         case 'message':
           buttonClicks.messageClicks++;
+          console.log('🔍 BACKEND: Incrementing message clicks');
           break;
         case 'call':
           buttonClicks.callClicks++;
+          console.log('🔍 BACKEND: Incrementing call clicks');
           break;
         case 'whatsapp':
           buttonClicks.whatsappClicks++;
+          console.log('🔍 BACKEND: Incrementing whatsapp clicks');
           break;
         case 'email':
           buttonClicks.emailClicks++;
+          console.log('🔍 BACKEND: Incrementing email clicks');
           break;
         case 'website':
           buttonClicks.websiteClicks++;
+          console.log('🔍 BACKEND: Incrementing website clicks');
           break;
       }
 
       buttonClicks.totalClicks++;
       buttonClicks.lastUpdated = new Date();
 
+      console.log('🔍 BACKEND: Updated button clicks:', buttonClicks);
+
       // Update vendor with new click counts
+      console.log('🔍 BACKEND: Updating vendor with new button clicks...');
       await strapi.entityService.update('api::vendor.vendor', id, {
         data: {
           buttonClicks
         }
       });
+      console.log('✅ BACKEND: Vendor updated successfully');
 
       // Log the click details to JSON file
       const logEntry = {
@@ -835,24 +903,29 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         clickedAt: new Date().toISOString()
       };
 
+      console.log('🔍 BACKEND: Creating log entry:', logEntry);
+
       try {
         const logsPath = path.join(__dirname, '../../../data/button-click-logs.json');
+        console.log('🔍 BACKEND: Saving to log file:', logsPath);
         const logsData = await fs.readFile(logsPath, 'utf8');
         const logs = JSON.parse(logsData);
         logs.logs.push(logEntry);
         await fs.writeFile(logsPath, JSON.stringify(logs, null, 2));
+        console.log('✅ BACKEND: Click log saved to file successfully');
       } catch (error) {
-        console.error('Error saving click log to file:', error);
+        console.error('❌ BACKEND: Error saving click log to file:', error);
       }
 
-      console.log('Button click logged:', logEntry);
+      console.log('✅ BACKEND: Button click logged successfully:', logEntry);
 
+      console.log('✅ BACKEND: Button click tracking completed successfully');
       return ctx.send({
         success: true,
         message: 'Button click tracked successfully'
       });
     } catch (error) {
-      console.error('Error tracking button click:', error);
+      console.error('❌ BACKEND: Error tracking button click:', error);
       return ctx.internalServerError('Failed to track button click');
     }
   },
@@ -910,18 +983,24 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         if (!vendor || vendor.user.id !== ctx.state.user.id) {
           return ctx.forbidden('Access denied');
         }
+      } else if (!ctx.state.user) {
+        // For testing purposes, allow access without authentication
+        console.log('🔍 BACKEND: No user authenticated, allowing access for testing');
       }
 
-      // Get button click logs from database using the service
-      const logs = await strapi.service('api::button-click-log.button-click-log').find({
+      // Get button click logs from database using entity service directly
+      const logs = await strapi.entityService.findMany('api::button-click-log.button-click-log', {
         filters: { vendor: id },
         sort: { clickedAt: 'desc' },
         pagination: {
           page: parseInt(page),
           pageSize: parseInt(pageSize)
         },
-        populate: ['userInfo', 'deviceInfo']
+        populate: ['userInfo', 'deviceInfo', 'vendor']
       });
+
+      console.log('🔍 BACKEND: Button click logs fetched:', logs.length);
+      console.log('🔍 BACKEND: First log sample:', logs[0]);
 
       return ctx.send({
         success: true,

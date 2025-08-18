@@ -7,6 +7,46 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::button-click-log.button-click-log', ({ strapi }) => ({
+  // Override find method to always populate components
+  async find(ctx) {
+    // Add populate to query if not present
+    if (!ctx.query.populate) {
+      ctx.query.populate = ['userInfo', 'deviceInfo', 'vendor'];
+    } else if (typeof ctx.query.populate === 'string') {
+      const populateArray = ctx.query.populate.split(',');
+      if (!populateArray.includes('userInfo')) populateArray.push('userInfo');
+      if (!populateArray.includes('deviceInfo')) populateArray.push('deviceInfo');
+      if (!populateArray.includes('vendor')) populateArray.push('vendor');
+      ctx.query.populate = populateArray;
+    } else if (Array.isArray(ctx.query.populate)) {
+      if (!ctx.query.populate.includes('userInfo')) ctx.query.populate.push('userInfo');
+      if (!ctx.query.populate.includes('deviceInfo')) ctx.query.populate.push('deviceInfo');
+      if (!ctx.query.populate.includes('vendor')) ctx.query.populate.push('vendor');
+    }
+
+    return await super.find(ctx);
+  },
+
+  // Override findOne method to always populate components
+  async findOne(ctx) {
+    // Add populate to query if not present
+    if (!ctx.query.populate) {
+      ctx.query.populate = ['userInfo', 'deviceInfo', 'vendor'];
+    } else if (typeof ctx.query.populate === 'string') {
+      const populateArray = ctx.query.populate.split(',');
+      if (!populateArray.includes('userInfo')) populateArray.push('userInfo');
+      if (!populateArray.includes('deviceInfo')) populateArray.push('deviceInfo');
+      if (!populateArray.includes('vendor')) populateArray.push('vendor');
+      ctx.query.populate = populateArray;
+    } else if (Array.isArray(ctx.query.populate)) {
+      if (!ctx.query.populate.includes('userInfo')) ctx.query.populate.push('userInfo');
+      if (!ctx.query.populate.includes('deviceInfo')) ctx.query.populate.push('deviceInfo');
+      if (!ctx.query.populate.includes('vendor')) ctx.query.populate.push('vendor');
+    }
+
+    return await super.findOne(ctx);
+  },
+
   // Custom method to get logs for a specific vendor
   async getVendorLogs(ctx) {
     try {

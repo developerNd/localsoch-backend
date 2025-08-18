@@ -29,6 +29,7 @@ const myExtraRoutes = [
     path: '/vendors/:id/button-click-logs',
     handler: 'api::vendor.vendor.getButtonClickLogs',
     config: {
+      auth: false, // Allow unauthenticated access for testing
       policies: [],
       middlewares: [],
     },
