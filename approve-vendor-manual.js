@@ -63,7 +63,7 @@ async function approveVendorManually() {
       console.log(`🔧 Updating user role to seller for user: ${vendorToApprove.user.id}`);
       
       const userUpdateResponse = await axios.put(`${API_URL}/api/users/${vendorToApprove.user.id}`, {
-        role: 2 // seller role ID
+        role: 3 // seller role ID
       }, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,

@@ -188,7 +188,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         console.log('🔄 Updating user role to seller...');
         await strapi.entityService.update('plugin::users-permissions.user', ctx.state.user.id, {
           data: {
-            role: 2 // seller role ID
+            role: 3 // seller role ID
           }
         });
         console.log('✅ User role updated to seller successfully');
@@ -354,7 +354,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       // If vendor is approved, update user role to seller
       if (status === 'approved' && vendor.user) {
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 2 // seller role ID
+          role: 3 // seller role ID
         });
       }
 
@@ -453,7 +453,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       // Update user role to seller
       await strapi.entityService.update('plugin::users-permissions.user', userId, {
         data: {
-          role: 2 // Seller role ID
+          role: 3 // Seller role ID
         }
       });
 
@@ -1005,7 +1005,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       if (status === 'approved' && vendor.user) {
         console.log('🔧 Updating user role to seller for user:', vendor.user.id);
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 2 // seller role ID
+          role: 3 // seller role ID
         });
         console.log('✅ User role updated to seller');
       }

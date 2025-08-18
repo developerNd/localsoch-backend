@@ -93,7 +93,7 @@ async function testCompleteSellerRegistration() {
     console.log('\n🔍 Step 5: Verifying user role update...');
     const userCheckResponse = await axios.get(`${API_URL}/api/users/${user.id}?populate=role`);
     
-    if (userCheckResponse.data.role && userCheckResponse.data.role.id === 4) {
+    if (userCheckResponse.data.role && userCheckResponse.data.role.id === 3) {
       console.log('✅ User role updated to seller successfully!');
       console.log('   Role ID:', userCheckResponse.data.role.id);
       console.log('   Role Name:', userCheckResponse.data.role.name);

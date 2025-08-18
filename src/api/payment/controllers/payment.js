@@ -98,10 +98,10 @@ module.exports = {
         return ctx.badRequest('User not found');
       }
 
-      // Update user role to seller (role ID 4)
+      // Update user role to seller (role ID 3)
       await strapi.entityService.update('plugin::users-permissions.user', userId, {
         data: {
-          role: 4 // Seller role ID
+          role: 3 // Seller role ID
         }
       });
 
