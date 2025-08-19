@@ -98,12 +98,29 @@ module.exports = {
         return ctx.badRequest('User not found');
       }
 
-      // Update user role to seller (role ID 3)
-      await strapi.entityService.update('plugin::users-permissions.user', userId, {
-        data: {
-          role: 3 // Seller role ID
+      // Dynamically find the seller role
+      const sellerRole = await strapi.entityService.findMany('plugin::users-permissions.role', {
+        filters: {
+          name: 'seller'
         }
       });
+
+      if (!sellerRole || sellerRole.length === 0) {
+        console.error('❌ Seller role not found in the system');
+        return ctx.internalServerError('Seller role not configured in the system');
+      }
+
+      const sellerRoleId = sellerRole[0].id;
+      console.log('✅ Found seller role with ID:', sellerRoleId);
+
+      // Update user role to seller
+      await strapi.entityService.update('plugin::users-permissions.user', userId, {
+        data: {
+          role: sellerRoleId
+        }
+      });
+
+      console.log('✅ Updated user role to seller for user ID:', userId);
 
       // Create vendor profile
       const vendor = await strapi.entityService.create('api::vendor.vendor', {

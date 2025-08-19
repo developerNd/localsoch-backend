@@ -9,6 +9,29 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const fs = require('fs').promises;
 const path = require('path');
 
+// Helper function to dynamically find seller role ID
+const getSellerRoleId = async () => {
+  try {
+    const sellerRole = await strapi.entityService.findMany('plugin::users-permissions.role', {
+      filters: {
+        name: 'seller'
+      }
+    });
+
+    if (!sellerRole || sellerRole.length === 0) {
+      console.error('❌ Seller role not found in the system');
+      throw new Error('Seller role not configured in the system');
+    }
+
+    const sellerRoleId = sellerRole[0].id;
+    console.log('✅ Found seller role with ID:', sellerRoleId);
+    return sellerRoleId;
+  } catch (error) {
+    console.error('❌ Error finding seller role:', error);
+    throw error;
+  }
+};
+
 module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
   async find(ctx) {
     console.log('🔍 VENDOR CONTROLLER: find method called');
@@ -186,9 +209,10 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       // Automatically update user role to seller after vendor creation
       try {
         console.log('🔄 Updating user role to seller...');
+        const sellerRoleId = await getSellerRoleId();
         await strapi.entityService.update('plugin::users-permissions.user', ctx.state.user.id, {
           data: {
-            role: 3 // seller role ID
+            role: sellerRoleId
           }
         });
         console.log('✅ User role updated to seller successfully');
@@ -353,15 +377,17 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
 
       // If vendor is approved, update user role to seller
       if (status === 'approved' && vendor.user) {
+        const sellerRoleId = await getSellerRoleId();
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 3 // seller role ID
+          role: sellerRoleId
         });
       }
 
       // If vendor is rejected, update user role to seller_pending
       if (status === 'rejected' && vendor.user) {
+        const sellerRoleId = await getSellerRoleId();
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 3 // seller_pending role ID
+          role: sellerRoleId
         });
       }
 
@@ -451,9 +477,10 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       }
 
       // Update user role to seller
+      const sellerRoleId = await getSellerRoleId();
       await strapi.entityService.update('plugin::users-permissions.user', userId, {
         data: {
-          role: 3 // Seller role ID
+          role: sellerRoleId
         }
       });
 
@@ -1082,20 +1109,18 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
 
       // If vendor is approved, update user role to seller
       if (status === 'approved' && vendor.user) {
-        console.log('🔧 Updating user role to seller for user:', vendor.user.id);
+        const sellerRoleId = await getSellerRoleId();
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 3 // seller role ID
+          role: sellerRoleId
         });
-        console.log('✅ User role updated to seller');
       }
 
       // If vendor is rejected, update user role to seller_pending
       if (status === 'rejected' && vendor.user) {
-        console.log('🔧 Updating user role to seller_pending for user:', vendor.user.id);
+        const sellerRoleId = await getSellerRoleId();
         await strapi.entityService.update('plugin::users-permissions.user', vendor.user.id, {
-          role: 3 // seller_pending role ID
+          role: sellerRoleId
         });
-        console.log('✅ User role updated to seller_pending');
       }
 
       return ctx.send({

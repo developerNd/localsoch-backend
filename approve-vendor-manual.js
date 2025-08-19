@@ -62,8 +62,23 @@ async function approveVendorManually() {
     if (vendorToApprove.user) {
       console.log(`🔧 Updating user role to seller for user: ${vendorToApprove.user.id}`);
       
+      // First, get the seller role ID dynamically
+      const rolesResponse = await axios.get(`${API_URL}/api/users-permissions/roles`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const sellerRole = rolesResponse.data.roles.find(role => role.name === 'seller');
+      if (!sellerRole) {
+        throw new Error('Seller role not found in the system');
+      }
+
+      console.log(`✅ Found seller role with ID: ${sellerRole.id}`);
+      
       const userUpdateResponse = await axios.put(`${API_URL}/api/users/${vendorToApprove.user.id}`, {
-        role: 3 // seller role ID
+        role: sellerRole.id
       }, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
