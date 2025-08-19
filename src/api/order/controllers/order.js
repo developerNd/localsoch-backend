@@ -65,6 +65,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         return ctx.forbidden('You can only update orders for your own vendor');
       }
 
+      const previousStatus = order.status;
+
       // Update the order status using the numeric ID
       console.log('🔧 Updating order with ID:', order.id, 'to status:', status);
       const updatedOrder = await strapi.entityService.update('api::order.order', order.id, {
@@ -77,6 +79,39 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       });
       
       console.log('✅ Order updated successfully:', updatedOrder.id, updatedOrder.status);
+
+      // Adjust stock based on status transitions (cancelled ↔ active)
+      try {
+        // Build line items from order (prefer orderItems with quantity; fallback to products relation as qty 1)
+        const lineItems = Array.isArray(order.orderItems) && order.orderItems.length > 0
+          ? order.orderItems.map((item) => ({ productId: item.productId || item.product, quantity: parseInt(item.quantity, 10) || 1 }))
+          : (Array.isArray(order.products) ? order.products.map((p) => ({ productId: p.id || p, quantity: 1 })) : []);
+
+        // If newly cancelled, restock; if moved out of cancelled, re-deduct
+        if (previousStatus !== 'cancelled' && status === 'cancelled') {
+          for (const item of lineItems) {
+            if (!item.productId) continue;
+            const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+            if (!product) continue;
+            const currentStock = parseInt(product.stock, 10) || 0;
+            const restored = currentStock + (parseInt(item.quantity, 10) || 0);
+            await strapi.entityService.update('api::product.product', item.productId, { data: { stock: restored } });
+          }
+          console.log('✅ Stock restored due to order cancellation');
+        } else if (previousStatus === 'cancelled' && status !== 'cancelled') {
+          for (const item of lineItems) {
+            if (!item.productId) continue;
+            const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+            if (!product) continue;
+            const currentStock = parseInt(product.stock, 10) || 0;
+            const deducted = Math.max(0, currentStock - (parseInt(item.quantity, 10) || 0));
+            await strapi.entityService.update('api::product.product', item.productId, { data: { stock: deducted } });
+          }
+          console.log('✅ Stock re-deducted as order moved out of cancelled');
+        }
+      } catch (stockAdjustError) {
+        console.error('❌ Error adjusting stock on status change:', stockAdjustError);
+      }
 
       // Create notification for the customer
       if (order.user) {
@@ -479,6 +514,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         return ctx.notFound('Order not found');
       }
 
+      const previousStatus = order.status;
+
       // Update order status
       const updatedOrder = await strapi.entityService.update('api::order.order', id, {
         data: {
@@ -488,6 +525,37 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           statusUpdatedBy: ctx.state.user.id
         }
       });
+
+      // Adjust stock on admin status change
+      try {
+        const lineItems = Array.isArray(order.orderItems) && order.orderItems.length > 0
+          ? order.orderItems.map((item) => ({ productId: item.productId || item.product, quantity: parseInt(item.quantity, 10) || 1 }))
+          : (Array.isArray(order.products) ? order.products.map((p) => ({ productId: p.id || p, quantity: 1 })) : []);
+
+        if (previousStatus !== 'cancelled' && status === 'cancelled') {
+          for (const item of lineItems) {
+            if (!item.productId) continue;
+            const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+            if (!product) continue;
+            const currentStock = parseInt(product.stock, 10) || 0;
+            const restored = currentStock + (parseInt(item.quantity, 10) || 0);
+            await strapi.entityService.update('api::product.product', item.productId, { data: { stock: restored } });
+          }
+          console.log('✅ (Admin) Stock restored due to order cancellation');
+        } else if (previousStatus === 'cancelled' && status !== 'cancelled') {
+          for (const item of lineItems) {
+            if (!item.productId) continue;
+            const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+            if (!product) continue;
+            const currentStock = parseInt(product.stock, 10) || 0;
+            const deducted = Math.max(0, currentStock - (parseInt(item.quantity, 10) || 0));
+            await strapi.entityService.update('api::product.product', item.productId, { data: { stock: deducted } });
+          }
+          console.log('✅ (Admin) Stock re-deducted as order moved out of cancelled');
+        }
+      } catch (stockAdjustError) {
+        console.error('❌ (Admin) Error adjusting stock on status change:', stockAdjustError);
+      }
 
       return ctx.send({
         success: true,
@@ -558,6 +626,37 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
     console.log('📝 Final order data:', JSON.stringify(orderData, null, 2));
 
+    // Build normalized order items list (supports either orderItems with quantities or products list as quantity 1)
+    const lineItems = Array.isArray(data.orderItems) && data.orderItems.length > 0
+      ? data.orderItems.map((item) => ({ productId: item.productId || item.product, quantity: parseInt(item.quantity, 10) || 1 }))
+      : (Array.isArray(data.products) ? data.products.map((pid) => ({ productId: pid, quantity: 1 })) : []);
+
+    // Validate stock availability before creating the order
+    try {
+      for (const item of lineItems) {
+        if (!item.productId) {
+          continue;
+        }
+        const product = await strapi.entityService.findOne('api::product.product', item.productId, {
+          fields: ['stock', 'name']
+        });
+        if (!product) {
+          return ctx.badRequest(`Product not found: ${item.productId}`);
+        }
+        const currentStock = parseInt(product.stock, 10) || 0;
+        const requestedQty = parseInt(item.quantity, 10) || 0;
+        if (requestedQty <= 0) {
+          return ctx.badRequest(`Invalid quantity for product ${product.name}`);
+        }
+        if (currentStock < requestedQty) {
+          return ctx.badRequest(`Insufficient stock for ${product.name}. Available: ${currentStock}, requested: ${requestedQty}`);
+        }
+      }
+    } catch (stockCheckError) {
+      console.error('❌ Stock validation error:', stockCheckError);
+      return ctx.internalServerError('Failed to validate stock');
+    }
+
     // Create the order
     const response = await strapi.service('api::order.order').create({ data: orderData });
 
@@ -614,6 +713,25 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         console.error('❌ Error details:', notificationError.message);
         // Don't fail the order creation if notification fails
       }
+
+    // Decrement stock for ordered products after successful order creation
+    try {
+      for (const item of lineItems) {
+        if (!item.productId) continue;
+        const product = await strapi.entityService.findOne('api::product.product', item.productId, {
+          fields: ['stock']
+        });
+        if (!product) continue;
+        const currentStock = parseInt(product.stock, 10) || 0;
+        const newStock = Math.max(0, currentStock - (parseInt(item.quantity, 10) || 0));
+        await strapi.entityService.update('api::product.product', item.productId, {
+          data: { stock: newStock }
+        });
+      }
+    } catch (stockUpdateError) {
+      console.error('❌ Failed to decrement stock after order creation:', stockUpdateError);
+      // Note: We do not fail the order if stock update fails, but this should be monitored
+    }
 
     // Return the created order
     return this.transformResponse(response);
