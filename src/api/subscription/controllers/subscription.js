@@ -17,7 +17,14 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
           vendor: vendorId,
           status: 'active'
         },
-        populate: ['plan'],
+        populate: {
+          plan: {
+            populate: ['*']
+          },
+          vendor: {
+            populate: ['*']
+          }
+        },
         sort: { createdAt: 'desc' },
         limit: 1
       });
@@ -64,7 +71,7 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
         data: {
           vendor: vendorId,
           plan: planId,
-          status: 'pending',
+          status: 'active', // Automatically activate since payment is verified
           startDate: startDate,
           endDate: endDate,
           amount: plan.price,
