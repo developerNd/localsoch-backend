@@ -103,5 +103,50 @@ module.exports = createCoreController('api::business-category.business-category'
       console.error('Error creating business category:', error);
       return ctx.internalServerError('Failed to create business category');
     }
+  },
+
+  // Override the delete method to ensure it works properly
+  async delete(ctx) {
+    const { id } = ctx.params;
+    
+    console.log('🔍 Business category delete request - ID:', id);
+    console.log('🔍 ID type:', typeof id);
+    console.log('🔍 User context:', ctx.state.user);
+    
+    try {
+      // Validate ID format
+      const categoryId = parseInt(id);
+      if (isNaN(categoryId) || categoryId <= 0) {
+        console.log('🔍 Invalid ID format:', id);
+        return ctx.badRequest('Invalid category ID format');
+      }
+      
+      console.log('🔍 Parsed category ID:', categoryId);
+      
+      // Check if the business category exists
+      const existingCategory = await strapi.entityService.findOne('api::business-category.business-category', categoryId);
+      
+      if (!existingCategory) {
+        console.log('🔍 Business category not found with ID:', categoryId);
+        return ctx.notFound('Business category not found');
+      }
+      
+      console.log('🔍 Found business category:', existingCategory.name);
+      
+      // Delete the business category
+      const deletedCategory = await strapi.entityService.delete('api::business-category.business-category', categoryId);
+      
+      console.log('🔍 Successfully deleted business category:', deletedCategory.name);
+      
+      return ctx.send({ 
+        message: 'Business category deleted successfully',
+        data: deletedCategory 
+      });
+    } catch (error) {
+      console.error('🔍 Error deleting business category:', error);
+      console.error('🔍 Error details:', error.message);
+      console.error('🔍 Error stack:', error.stack);
+      return ctx.internalServerError('Failed to delete business category');
+    }
   }
 })); 

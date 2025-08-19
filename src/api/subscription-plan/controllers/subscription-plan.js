@@ -93,5 +93,50 @@ module.exports = createCoreController('api::subscription-plan.subscription-plan'
       console.error('Error creating subscription plan:', error);
       return ctx.internalServerError('Failed to create subscription plan');
     }
+  },
+
+  // Override the delete method to ensure it works properly
+  async delete(ctx) {
+    const { id } = ctx.params;
+    
+    console.log('🔍 Subscription plan delete request - ID:', id);
+    
+    try {
+      // Validate ID format
+      const planId = parseInt(id);
+      if (isNaN(planId) || planId <= 0) {
+        return ctx.badRequest('Invalid subscription plan ID format');
+      }
+      
+      // Check if the subscription plan exists
+      const existingPlan = await strapi.entityService.findOne('api::subscription-plan.subscription-plan', planId);
+      
+      if (!existingPlan) {
+        return ctx.notFound('Subscription plan not found');
+      }
+      
+      // Check if there are any active subscriptions using this plan
+      const activeSubscriptions = await strapi.entityService.findMany('api::subscription.subscription', {
+        filters: {
+          plan: planId,
+          status: 'active'
+        }
+      });
+      
+      if (activeSubscriptions && activeSubscriptions.length > 0) {
+        return ctx.badRequest(`Cannot delete plan. There are ${activeSubscriptions.length} active subscriptions using this plan.`);
+      }
+      
+      // Delete the subscription plan
+      const deletedPlan = await strapi.entityService.delete('api::subscription-plan.subscription-plan', planId);
+      
+      return ctx.send({ 
+        message: 'Subscription plan deleted successfully',
+        data: deletedPlan 
+      });
+    } catch (error) {
+      console.error('🔍 Error deleting subscription plan:', error);
+      return ctx.internalServerError('Failed to delete subscription plan');
+    }
   }
 })); 
