@@ -31,6 +31,10 @@
       "type": "boolean",
       "default": false
     },
+    "isAdminCreated": {
+      "type": "boolean",
+      "default": false
+    },
     "actionUrl": {
       "type": "string"
     },

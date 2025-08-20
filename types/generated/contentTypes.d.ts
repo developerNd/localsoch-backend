@@ -753,6 +753,8 @@ export interface ApiNotificationNotification
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    isAdminCreated: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     isImportant: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     isRead: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;

@@ -148,5 +148,55 @@ module.exports = createCoreController('api::business-category.business-category'
       console.error('🔍 Error stack:', error.stack);
       return ctx.internalServerError('Failed to delete business category');
     }
+  },
+
+  // Custom method to create business categories from signup
+  async createCustom(ctx) {
+    const { name, description } = ctx.request.body;
+    
+    if (!name) {
+      return ctx.badRequest('Business category name is required');
+    }
+    
+    try {
+      // Check if category already exists
+      const existingCategory = await strapi.entityService.findMany('api::business-category.business-category', {
+        filters: {
+          name: {
+            $eqi: name // Case-insensitive comparison
+          }
+        }
+      });
+      
+      if (existingCategory && existingCategory.length > 0) {
+        // Return existing category
+        return ctx.send({ 
+          data: existingCategory[0],
+          message: 'Business category already exists'
+        });
+      }
+      
+      // Create new custom business category
+      const category = await strapi.entityService.create('api::business-category.business-category', {
+        data: {
+          name: name,
+          description: description || `Custom business category: ${name}`,
+          isActive: true,
+          sortOrder: 999, // Place at the end
+          isCustom: true // Mark as custom category
+        },
+        populate: ['image']
+      });
+      
+      console.log('🔍 Created custom business category:', category.name);
+      
+      return ctx.send({ 
+        data: category,
+        message: 'Custom business category created successfully'
+      });
+    } catch (error) {
+      console.error('Error creating custom business category:', error);
+      return ctx.internalServerError('Failed to create custom business category');
+    }
   }
 })); 

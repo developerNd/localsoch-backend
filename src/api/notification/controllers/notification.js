@@ -112,6 +112,30 @@ module.exports = createCoreController('api::notification.notification', ({ strap
     }
   },
 
+  // Get unread count for a vendor
+  async getVendorUnreadCount(ctx) {
+    try {
+      const { vendorId } = ctx.params;
+      
+      console.log('🔍 Getting unread count for vendor:', vendorId);
+      
+      if (!vendorId) {
+        return ctx.badRequest('Vendor ID is required');
+      }
+
+      const count = await strapi.db.query('api::notification.notification').count({
+        where: { vendor: vendorId, isRead: false }
+      });
+
+      console.log('🔍 Unread count for vendor', vendorId, ':', count);
+
+      return { data: { count } };
+    } catch (error) {
+      console.error('Error getting vendor unread count:', error);
+      return ctx.internalServerError('Failed to get vendor unread count');
+    }
+  },
+
   // Create notification (utility function for other controllers)
   async createNotification(notificationData) {
     try {
@@ -155,6 +179,42 @@ module.exports = createCoreController('api::notification.notification', ({ strap
     } catch (error) {
       console.error('❌ Error creating notification via API:', error);
       return ctx.internalServerError('Failed to create notification');
+    }
+  },
+
+  // Create bulk notifications for broadcasting
+  async createBulk(ctx) {
+    try {
+      const { notifications } = ctx.request.body;
+      console.log('🔔 Creating bulk notifications:', notifications.length);
+      
+      if (!Array.isArray(notifications) || notifications.length === 0) {
+        return ctx.badRequest('Notifications array is required and cannot be empty');
+      }
+
+      const createdNotifications = [];
+      
+      for (const notificationData of notifications) {
+        try {
+          const notification = await strapi.entityService.create('api::notification.notification', {
+            data: notificationData,
+            populate: ['user', 'vendor']
+          });
+          createdNotifications.push(notification);
+        } catch (error) {
+          console.error('❌ Error creating individual notification:', error);
+          // Continue with other notifications even if one fails
+        }
+      }
+      
+      console.log('✅ Bulk notifications created:', createdNotifications.length);
+      return { 
+        data: createdNotifications,
+        message: `Successfully created ${createdNotifications.length} notifications`
+      };
+    } catch (error) {
+      console.error('❌ Error creating bulk notifications:', error);
+      return ctx.internalServerError('Failed to create bulk notifications');
     }
   },
 

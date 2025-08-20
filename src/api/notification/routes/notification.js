@@ -37,6 +37,15 @@ module.exports = {
       },
     },
     {
+      method: 'POST',
+      path: '/notifications/bulk',
+      handler: 'notification.createBulk',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'PUT',
       path: '/notifications/:id',
       handler: 'notification.update',
@@ -95,6 +104,15 @@ module.exports = {
       method: 'GET',
       path: '/notifications/user/:userId/unread-count',
       handler: 'notification.getUnreadCount',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/notifications/vendor/:vendorId/unread-count',
+      handler: 'notification.getVendorUnreadCount',
       config: {
         policies: [],
         middlewares: [],
