@@ -153,12 +153,11 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
         console.log('🔔 Creating order status notification:', notificationData);
 
-        const notification = await strapi.entityService.create('api::notification.notification', {
-          data: notificationData,
-          populate: ['user', 'vendor', 'order']
-        });
+        // Use notification service for WebSocket integration
+        const notificationService = strapi.service('api::notification.notification');
+        const notification = await notificationService.createNotification(notificationData);
         
-        console.log('✅ Order status notification created:', notification);
+        console.log('✅ Order status notification created with WebSocket:', notification.id);
       }
 
       return { data: updatedOrder };

@@ -268,6 +268,26 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
             data: { vendor: sellerVendorId },
             populate: ['vendor', 'image', 'category']
           });
+
+          // Send notification to admin about new product creation
+          try {
+            const notificationService = strapi.service('api::notification.notification');
+            await notificationService.createAdminNotification(
+              'New Product Created',
+              `A new product "${updatedProduct.name}" has been created by seller "${vendor[0].shopName || vendor[0].name}".`,
+              'info',
+              {
+                productId: updatedProduct.id,
+                vendorId: sellerVendorId,
+                productName: updatedProduct.name,
+                event: 'product_created'
+              }
+            );
+            console.log('✅ Admin notification sent for new product creation');
+          } catch (notificationError) {
+            console.error('❌ Error sending admin notification for product creation:', notificationError);
+            // Don't fail the product creation if notification fails
+          }
           
           return { data: updatedProduct };
         } else {
@@ -351,9 +371,9 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         return ctx.forbidden('Admin access required');
       }
 
-      // Get product
+      // Get product with vendor details
       const product = await strapi.entityService.findOne('api::product.product', id, {
-        populate: ['vendor']
+        populate: ['vendor', 'vendor.user']
       });
 
       if (!product) {
@@ -373,42 +393,52 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
 
       // Create notification for the vendor
       try {
-        if (product.vendor && product.vendor.user) {
+        console.log('🔍 Product vendor info:', product.vendor);
+        
+        if (product.vendor && product.vendor.id) {
           let notificationTitle, notificationMessage;
+          let notificationType = 'success';
           
           if (status === 'approved') {
             notificationTitle = 'Product Approved';
             notificationMessage = `Your product "${product.name}" has been approved and is now live.`;
+            notificationType = 'success';
           } else {
             notificationTitle = 'Product Rejected';
             notificationMessage = `Your product "${product.name}" has been rejected. ${reason ? `Reason: ${reason}` : ''}`;
+            notificationType = 'warning';
           }
 
-          const notificationData = {
-            title: notificationTitle,
-            message: notificationMessage,
-            type: 'product',
-            user: product.vendor.user.id,
-            vendor: product.vendor.id,
-            product: product.id,
-            actionUrl: `/products/${product.id}`,
-            actionText: 'View Product',
-            isImportant: status === 'rejected'
-          };
-
-          console.log('🔔 Creating product approval notification:', notificationData);
-
-          const notification = await strapi.entityService.create('api::notification.notification', {
-            data: notificationData,
-            populate: ['user', 'vendor', 'product']
+          console.log('🔔 Creating seller notification for vendor ID:', product.vendor.id);
+          
+          const notificationService = strapi.service('api::notification.notification');
+          await notificationService.createSellerNotification(
+            product.vendor.id,
+            notificationTitle,
+            notificationMessage,
+            notificationType,
+            {
+              productId: product.id,
+              productName: product.name,
+              status: status,
+              reason: reason,
+              event: 'product_status_changed'
+            }
+          );
+          
+          console.log('✅ Seller notification sent for product status change');
+        } else {
+          console.warn('⚠️ No vendor found for product, skipping seller notification');
+          console.log('🔍 Product data:', {
+            id: product.id,
+            name: product.name,
+            vendor: product.vendor
           });
-          
-          console.log('✅ Product approval notification created:', notification);
-          
-          console.log('✅ Notification created for product approval');
         }
       } catch (notificationError) {
         console.error('❌ Error creating product notification:', notificationError);
+        console.error('❌ Error details:', notificationError.message);
+        console.error('❌ Error stack:', notificationError.stack);
         // Don't fail the product update if notification fails
       }
 

@@ -111,6 +111,7 @@ module.exports = (plugin) => {
           addresses: updatedUser.addresses, // Include addresses directly
           profileImage: updatedUser.profileImage, // Include profile image
           notificationPreferences: updatedUser.notificationPreferences,
+          fcmToken: updatedUser.fcmToken, // Include FCM token
           phone: sanitizedUser.phone,
           totalRewards: sanitizedUser.totalRewards,
           referralCount: sanitizedUser.referralCount,
@@ -179,6 +180,7 @@ module.exports = (plugin) => {
           addresses: fullUser.addresses, // Include addresses directly
           profileImage: fullUser.profileImage, // Include profile image
           notificationPreferences: fullUser.notificationPreferences,
+          fcmToken: fullUser.fcmToken, // Include FCM token
           phone: sanitizedUser.phone,
           totalRewards: sanitizedUser.totalRewards,
           referralCount: sanitizedUser.referralCount,

@@ -55,6 +55,22 @@
     },
     "completedAt": {
       "type": "datetime"
+    },
+    "userReward": {
+      "type": "decimal",
+      "default": 0
+    },
+    "sellerDiscount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "userType": {
+      "type": "enumeration",
+      "enum": [
+        "user",
+        "seller"
+      ],
+      "default": "user"
     }
   }
 } 

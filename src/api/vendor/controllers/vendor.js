@@ -106,21 +106,24 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       delete ctx.query.filters.location;
     }
     
-    // Always ensure businessCategory is populated
+    // Always ensure businessCategory and products are populated
     if (ctx.query.populate === '*' || ctx.query.populate?.includes('*')) {
       // For populate=*, we need to preserve all fields and add businessCategory
       ctx.query.populate = '*';
       // We'll handle businessCategory population in the response
     } else if (ctx.query.populate) {
-      // If specific populate is requested, add businessCategory if not present
+      // If specific populate is requested, add businessCategory and products if not present
       const populateArray = Array.isArray(ctx.query.populate) ? ctx.query.populate : ctx.query.populate.split(',');
       if (!populateArray.includes('businessCategory')) {
         populateArray.push('businessCategory');
-        ctx.query.populate = populateArray;
       }
+      if (!populateArray.includes('products')) {
+        populateArray.push('products');
+      }
+      ctx.query.populate = populateArray;
     } else {
-      // If no populate specified, add businessCategory
-      ctx.query.populate = ['businessCategory'];
+      // If no populate specified, add businessCategory and products
+      ctx.query.populate = ['businessCategory', 'products'];
     }
     
     console.log('🔍 VENDOR CONTROLLER: Final query before super.find:', ctx.query);
@@ -156,6 +159,62 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         businessCategory: data[0].businessCategory
       } : null
     });
+
+    // Add review stats to each vendor
+    if (data && data.length > 0) {
+      for (const vendor of data) {
+        try {
+                  const reviews = await strapi.entityService.findMany('api::review.review', {
+          filters: { 
+            vendor: vendor.id
+          },
+          populate: ['order', 'vendor']
+        });
+
+        const totalReviews = reviews.length;
+        const averageRating = totalReviews > 0 
+          ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews) * 10) / 10
+          : 0;
+
+          // Add review stats to vendor data
+          vendor.rating = averageRating;
+          vendor.averageRating = averageRating;
+          vendor.totalReviews = totalReviews;
+          
+          // Add product count (only active AND approved products)
+          if (vendor.products) {
+            vendor.productsCount = vendor.products.filter(product => 
+              product.isActive === true && 
+              (product.isApproved === true || product.approvalStatus === 'approved')
+            ).length;
+          } else {
+            // If products are not populated, fetch count separately
+            try {
+              const productsCount = await strapi.entityService.count('api::product.product', {
+                filters: { 
+                  vendor: vendor.id,
+                  isActive: true,
+                  $or: [
+                    { isApproved: true },
+                    { approvalStatus: 'approved' }
+                  ]
+                }
+              });
+              vendor.productsCount = productsCount;
+            } catch (countError) {
+              console.log('⚠️ Error fetching products count for vendor:', vendor.id, countError.message);
+              vendor.productsCount = 0;
+            }
+          }
+        } catch (reviewError) {
+          console.log('⚠️ Error fetching review stats for vendor:', vendor.id, reviewError.message);
+          // Set default values if review stats fail
+          vendor.rating = 0;
+          vendor.averageRating = 0;
+          vendor.totalReviews = 0;
+        }
+      }
+    }
     
     return { data, meta };
   },
@@ -205,6 +264,44 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       });
       
       console.log('✅ Vendor created successfully:', vendor.id);
+      
+      // Handle referral code if provided
+      if (data.referralCode) {
+        try {
+          console.log('🎁 Processing referral code for seller registration:', data.referralCode);
+          
+          // Use the referral service to apply the code
+          const referralService = strapi.service('api::referral.referral');
+          const mockCtx = {
+            request: {
+              body: {
+                referralCode: data.referralCode,
+                newUserId: ctx.state.user.id,
+                userType: 'seller'
+              }
+            },
+            send: (data) => {
+              console.log('✅ Referral code applied successfully:', data);
+              return data;
+            },
+            badRequest: (message) => {
+              console.log('❌ Referral code application failed:', message);
+              return { success: false, message };
+            }
+          };
+          
+          const referralResponse = await referralService.applyCode(mockCtx);
+          
+          if (referralResponse && referralResponse.success) {
+            console.log('🎉 Referral benefits applied:');
+            console.log('   User Reward: ₹', referralResponse.userReward);
+            console.log('   Seller Discount: ', referralResponse.sellerDiscount, '%');
+          }
+        } catch (referralError) {
+          console.error('❌ Error processing referral code:', referralError);
+          console.warn('⚠️ Vendor created but referral code processing failed');
+        }
+      }
       
       // Automatically update user role to seller after vendor creation
       try {
@@ -493,6 +590,26 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
           isApproved: true
         }
       });
+
+      // Send notification to admin about new seller registration and payment
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        await notificationService.createAdminNotification(
+          'New Seller Registration & Payment',
+          `A new seller "${vendorData.shopName}" has completed registration and payment. User: ${user.username || user.email}`,
+          'success',
+          {
+            vendorId: vendor.id,
+            userId: userId,
+            shopName: vendorData.shopName,
+            event: 'seller_registration_complete'
+          }
+        );
+        console.log('✅ Admin notification sent for seller registration and payment');
+      } catch (notificationError) {
+        console.error('❌ Error sending admin notification for seller registration:', notificationError);
+        // Don't fail the registration if notification fails
+      }
 
       return ctx.send({
         success: true,
@@ -1172,6 +1289,109 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     } catch (error) {
       console.error('Error getting vendor stats:', error);
       return ctx.internalServerError('Failed to get vendor statistics');
+    }
+  },
+
+  // Custom findOne method to include review stats
+  async findOne(ctx) {
+    try {
+      const { id } = ctx.params;
+      console.log('🔍 VENDOR CONTROLLER: findOne called for vendor ID:', id);
+
+      // Get vendor with populated data
+      const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
+        populate: ['user', 'products', 'profileImage', 'businessCategory']
+      });
+
+      if (!vendor) {
+        console.log('❌ Vendor not found with ID:', id);
+        return ctx.notFound('Vendor not found');
+      }
+
+      // Get review stats for this vendor
+      try {
+        const reviews = await strapi.entityService.findMany('api::review.review', {
+          filters: { 
+            vendor: id
+          },
+          populate: ['order', 'vendor']
+        });
+
+                  const totalReviews = reviews.length;
+          const averageRating = totalReviews > 0 
+            ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews) * 10) / 10
+            : 0;
+
+        const ratingDistribution = {
+          5: reviews.filter(r => r.rating === 5).length,
+          4: reviews.filter(r => r.rating === 4).length,
+          3: reviews.filter(r => r.rating === 3).length,
+          2: reviews.filter(r => r.rating === 2).length,
+          1: reviews.filter(r => r.rating === 1).length,
+        };
+
+        // Add review stats to vendor data
+        vendor.rating = averageRating;
+        vendor.averageRating = averageRating;
+        vendor.totalReviews = totalReviews;
+        vendor.reviewStats = {
+          totalReviews,
+          averageRating,
+          ratingDistribution
+        };
+        
+        // Add product count (only active AND approved products)
+        if (vendor.products) {
+          vendor.productsCount = vendor.products.filter(product => 
+            product.isActive === true && 
+            (product.isApproved === true || product.approvalStatus === 'approved')
+          ).length;
+        } else {
+          // If products are not populated, fetch count separately
+          try {
+            const productsCount = await strapi.entityService.count('api::product.product', {
+              filters: { 
+                vendor: vendor.id,
+                isActive: true,
+                $or: [
+                  { isApproved: true },
+                  { approvalStatus: 'approved' }
+                ]
+              }
+            });
+            vendor.productsCount = productsCount;
+          } catch (countError) {
+            console.log('⚠️ Error fetching products count for vendor:', vendor.id, countError.message);
+            vendor.productsCount = 0;
+          }
+        }
+
+        console.log('✅ Vendor data with review stats:', {
+          id: vendor.id,
+          name: vendor.name,
+          totalReviews,
+          averageRating
+        });
+      } catch (reviewError) {
+        console.log('⚠️ Error fetching review stats:', reviewError);
+        // Set default values if review stats fail
+        vendor.rating = 0;
+        vendor.averageRating = 0;
+        vendor.totalReviews = 0;
+        vendor.reviewStats = {
+          totalReviews: 0,
+          averageRating: 0,
+          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+        };
+      }
+
+      return ctx.send({
+        success: true,
+        data: vendor
+      });
+    } catch (error) {
+      console.error('❌ Error in vendor findOne:', error);
+      return ctx.internalServerError('Failed to fetch vendor details');
     }
   },
 

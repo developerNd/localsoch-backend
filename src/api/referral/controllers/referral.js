@@ -11,7 +11,15 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
   // Generate referral code for a user
   async generateCode(ctx) {
     try {
-      const { user } = ctx.state;
+      // Get user from Authorization header
+      const authHeader = ctx.request.header.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
+      const token = authHeader.substring(7);
+      const { payload } = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
       
       if (!user) {
         return ctx.unauthorized('User not authenticated');
@@ -63,7 +71,15 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
   // Get user's referral statistics
   async getStats(ctx) {
     try {
-      const { user } = ctx.state;
+      // Get user from Authorization header
+      const authHeader = ctx.request.header.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
+      const token = authHeader.substring(7);
+      const { payload } = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
       
       if (!user) {
         return ctx.unauthorized('User not authenticated');
@@ -113,6 +129,20 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
   // Validate referral code
   async validateCode(ctx) {
     try {
+      // Get user from Authorization header
+      const authHeader = ctx.request.header.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
+      const token = authHeader.substring(7);
+      const { payload } = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
+      
+      if (!user) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
       const { referralCode } = ctx.request.body;
       
       if (!referralCode) {
@@ -166,7 +196,21 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
   // Apply referral code during registration
   async applyCode(ctx) {
     try {
-      const { referralCode, newUserId } = ctx.request.body;
+      // Get user from Authorization header
+      const authHeader = ctx.request.header.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
+      const token = authHeader.substring(7);
+      const { payload } = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
+      
+      if (!user) {
+        return ctx.unauthorized('User not authenticated');
+      }
+      
+      const { referralCode, newUserId, userType = 'user' } = ctx.request.body;
       
       if (!referralCode || !newUserId) {
         return ctx.badRequest('Referral code and user ID are required');
@@ -196,20 +240,52 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
         });
       }
 
-      // Update referral status
+      // Determine rewards based on user type
+      let userReward = 0;
+      let sellerDiscount = 0;
+      let rewardMessage = '';
+
+      if (userType === 'user') {
+        // If regular user logs in: User gets ₹10
+        userReward = 10;
+        rewardMessage = 'Referral code applied! You get ₹10 cashback.';
+      } else if (userType === 'seller') {
+        // If seller logs in: Seller gets 20% discount
+        sellerDiscount = 20;
+        rewardMessage = 'Referral code applied! You get 20% discount on seller registration.';
+      } else {
+        rewardMessage = 'Referral code applied successfully.';
+      }
+
+      // Update referral status with new reward information
       await strapi.entityService.update('api::referral.referral', referralData.id, {
         data: {
           referredUser: newUserId,
           status: 'completed',
-          completedAt: new Date()
+          completedAt: new Date(),
+          userReward: userReward,
+          sellerDiscount: sellerDiscount,
+          userType: userType
         }
       });
 
+      // Update referrer's total rewards if user gets benefit
+      if (userReward > 0) {
+        const referrer = await strapi.entityService.findOne('plugin::users-permissions.user', referralData.referrer);
+        const currentRewards = parseFloat(referrer.totalRewards || 0);
+        await strapi.entityService.update('plugin::users-permissions.user', referralData.referrer, {
+          data: {
+            totalRewards: currentRewards + userReward
+          }
+        });
+      }
+
       return ctx.send({
         success: true,
-        message: 'Referral code applied successfully',
-        rewardAmount: referralData.rewardAmount,
-        rewardType: referralData.rewardType
+        message: rewardMessage,
+        userReward: userReward,
+        sellerDiscount: sellerDiscount,
+        userType: userType
       });
     } catch (error) {
       console.error('Error applying referral code:', error);

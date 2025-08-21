@@ -947,11 +947,15 @@ export interface ApiReferralReferral extends Struct.CollectionTypeSchema {
       ['cashback', 'discount', 'credit']
     > &
       Schema.Attribute.DefaultTo<'cashback'>;
+    sellerDiscount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     status: Schema.Attribute.Enumeration<['pending', 'completed', 'expired']> &
       Schema.Attribute.DefaultTo<'pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    userReward: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    userType: Schema.Attribute.Enumeration<['user', 'seller']> &
+      Schema.Attribute.DefaultTo<'user'>;
   };
 }
 
@@ -1133,6 +1137,7 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     description: Schema.Attribute.Text;
     email: Schema.Attribute.Email;
+    fcmToken: Schema.Attribute.String & Schema.Attribute.Private;
     gstNumber: Schema.Attribute.String;
     ifscCode: Schema.Attribute.String;
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
@@ -1167,6 +1172,36 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
       'plugin::users-permissions.user'
     >;
     whatsapp: Schema.Attribute.String;
+  };
+}
+
+export interface ApiWebsocketWebsocket extends Struct.SingleTypeSchema {
+  collectionName: 'websockets';
+  info: {
+    displayName: 'WebSocket';
+    pluralName: 'websockets';
+    singularName: 'websocket';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    connectedUsers: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    connectedVendors: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::websocket.websocket'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'running'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1635,6 +1670,9 @@ export interface PluginUsersPermissionsUser
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     email: Schema.Attribute.Email & Schema.Attribute.Unique;
+    fcmToken: Schema.Attribute.String;
+    firstName: Schema.Attribute.String;
+    lastName: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1698,6 +1736,7 @@ declare module '@strapi/strapi' {
       'api::subscription-plan.subscription-plan': ApiSubscriptionPlanSubscriptionPlan;
       'api::subscription.subscription': ApiSubscriptionSubscription;
       'api::vendor.vendor': ApiVendorVendor;
+      'api::websocket.websocket': ApiWebsocketWebsocket;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

@@ -136,5 +136,78 @@ module.exports = {
         middlewares: [],
       },
     },
+    // Push notification routes
+    {
+      method: 'POST',
+      path: '/notifications/push/users',
+      handler: 'notification.sendPushToUsers',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/notifications/push/vendors',
+      handler: 'notification.sendPushToVendors',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/notifications/push/all-users',
+      handler: 'notification.sendPushToAllUsers',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/notifications/push/all-vendors',
+      handler: 'notification.sendPushToAllVendors',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/notifications/push/everyone',
+      handler: 'notification.sendPushToEveryone',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/notifications/push/stats',
+      handler: 'notification.getNotificationStats',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/notifications/push/user/:userId/token',
+      handler: 'notification.updateUserToken',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/notifications/push/vendor/:vendorId/token',
+      handler: 'notification.updateVendorToken',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

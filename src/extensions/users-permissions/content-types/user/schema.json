@@ -75,6 +75,12 @@
     "phone": {
       "type": "string"
     },
+    "firstName": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string"
+    },
     "notificationPreferences": {
       "type": "json"
     },
@@ -86,6 +92,9 @@
       "multiple": false,
       "required": false,
       "allowedTypes": ["images"]
+    },
+    "fcmToken": {
+      "type": "string"
     }
   }
 } 

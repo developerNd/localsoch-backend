@@ -140,6 +140,44 @@ module.exports = {
         }
       });
 
+      // Handle referral code if provided
+      if (vendorData.referralCode) {
+        try {
+          console.log('🎁 Processing referral code for seller registration:', vendorData.referralCode);
+          
+          // Use the referral service to apply the code
+          const referralService = strapi.service('api::referral.referral');
+          const mockCtx = {
+            request: {
+              body: {
+                referralCode: vendorData.referralCode,
+                newUserId: userId,
+                userType: 'seller'
+              }
+            },
+            send: (data) => {
+              console.log('✅ Referral code applied successfully:', data);
+              return data;
+            },
+            badRequest: (message) => {
+              console.log('❌ Referral code application failed:', message);
+              return { success: false, message };
+            }
+          };
+          
+          const referralResponse = await referralService.applyCode(mockCtx);
+          
+          if (referralResponse && referralResponse.success) {
+            console.log('🎉 Referral benefits applied:');
+            console.log('   User Reward: ₹', referralResponse.userReward);
+            console.log('   Seller Discount: ', referralResponse.sellerDiscount, '%');
+          }
+        } catch (referralError) {
+          console.error('❌ Error processing referral code:', referralError);
+          console.warn('⚠️ Vendor created but referral code processing failed');
+        }
+      }
+
       console.log('✅ Seller registration completed successfully');
       console.log('   User ID:', userId);
       console.log('   Vendor ID:', vendor.id);

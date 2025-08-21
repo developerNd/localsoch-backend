@@ -119,6 +119,10 @@
       "relation": "oneToMany",
       "target": "api::subscription.subscription",
       "mappedBy": "vendor"
+    },
+    "fcmToken": {
+      "type": "string",
+      "private": true
     }
   }
 }

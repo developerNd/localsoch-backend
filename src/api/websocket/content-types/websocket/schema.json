@@ -1,0 +1,26 @@
+{
+  "kind": "singleType",
+  "collectionName": "websockets",
+  "info": {
+    "singularName": "websocket",
+    "pluralName": "websockets",
+    "displayName": "WebSocket"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "status": {
+      "type": "string",
+      "default": "running"
+    },
+    "connectedUsers": {
+      "type": "integer",
+      "default": 0
+    },
+    "connectedVendors": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+} 

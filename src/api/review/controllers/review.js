@@ -55,13 +55,13 @@ module.exports = createCoreController('api::review.review', ({ strapi }) => ({
 
       const reviews = await strapi.entityService.findMany('api::review.review', {
         filters: { 
-          vendor: numericVendorId,
-          isApproved: true 
+          vendor: numericVendorId
         },
         populate: ['order', 'vendor']
       });
 
       console.log('🔍 Found reviews for stats:', reviews.length);
+      console.log('🔍 Reviews data:', reviews.map(r => ({ id: r.id, rating: r.rating, vendor: r.vendor?.id, isApproved: r.isApproved })));
 
       const totalReviews = reviews.length;
       const averageRating = totalReviews > 0 
