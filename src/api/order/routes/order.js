@@ -73,5 +73,15 @@ module.exports = {
         middlewares: [],
       },
     },
+    // Invoice route
+    {
+      method: 'GET',
+      path: '/orders/:id/invoice',
+      handler: 'order.downloadInvoice',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

@@ -55,23 +55,17 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         }
       }
 
-      // Handle location-based filtering by vendor pincode
+      // Handle location-based filtering by vendor location
       if (query.filters && query.filters.location) {
         const locationFilter = query.filters.location;
         console.log('🔍 PRODUCT CONTROLLER: Location filter received:', locationFilter);
         
-        // Initialize vendor filter if it doesn't exist
-        if (!query.filters.vendor) {
-          query.filters.vendor = {};
-        }
+        // Create an OR condition for location matching
+        const locationConditions = [];
         
-        // Debug: Check if products exist without location filtering
-        console.log('🔍 PRODUCT CONTROLLER: Testing products without location filter...');
-        
-        // Filter by vendor pincode
+        // Filter by vendor pincode (exact match)
         if (locationFilter.pincode) {
           console.log('🔍 PRODUCT CONTROLLER: Adding vendor pincode filter:', locationFilter.pincode);
-          // Try a different approach - filter by vendor ID instead of vendor.pincode
           try {
             const vendorsWithPincode = await strapi.entityService.findMany('api::vendor.vendor', {
               filters: { pincode: locationFilter.pincode }
@@ -80,36 +74,99 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
             if (vendorsWithPincode.length > 0) {
               const vendorIds = vendorsWithPincode.map(v => v.id);
               console.log('🔍 PRODUCT CONTROLLER: Found vendor IDs with pincode:', vendorIds);
-              query.filters.vendor = {
-                id: {
-                  $in: vendorIds
+              locationConditions.push({
+                vendor: {
+                  id: {
+                    $in: vendorIds
+                  }
                 }
-              };
-            } else {
-              console.log('🔍 PRODUCT CONTROLLER: No vendors found with pincode:', locationFilter.pincode);
-              // Set empty result filter
-              query.filters.id = { $eq: -1 }; // This will return no results
+              });
             }
           } catch (error) {
             console.log('🔍 PRODUCT CONTROLLER: Error finding vendors by pincode:', error.message);
-            // Fallback to original method
-            query.filters.vendor.pincode = {
-              $eq: locationFilter.pincode
-            };
           }
         }
         
-        // Filter by vendor city (temporarily disabled for debugging)
+        // Filter by vendor city (case-insensitive contains)
         if (locationFilter.city) {
-          console.log('🔍 PRODUCT CONTROLLER: City filter disabled for debugging');
+          console.log('🔍 PRODUCT CONTROLLER: Adding vendor city filter:', locationFilter.city);
+          
+          // Clean the city name to remove common suffixes
+          const cleanCityName = locationFilter.city
+            .toLowerCase()
+            .replace(/\b(so|sub|office|district|tahsil|taluk|block|nagar|colony|area|zone)\b/g, '')
+            .trim();
+          
+          try {
+            const vendorsWithCity = await strapi.entityService.findMany('api::vendor.vendor', {
+              filters: { 
+                city: {
+                  $containsi: cleanCityName
+                }
+              }
+            });
+            
+            if (vendorsWithCity.length > 0) {
+              const vendorIds = vendorsWithCity.map(v => v.id);
+              console.log('🔍 PRODUCT CONTROLLER: Found vendor IDs with city:', {
+                originalCity: locationFilter.city,
+                cleanCity: cleanCityName,
+                count: vendorIds.length,
+                vendors: vendorsWithCity.map(v => ({ id: v.id, name: v.name, city: v.city, pincode: v.pincode }))
+              });
+              locationConditions.push({
+                vendor: {
+                  id: {
+                    $in: vendorIds
+                  }
+                }
+              });
+            } else {
+              console.log('🔍 PRODUCT CONTROLLER: No vendors found with city:', cleanCityName);
+            }
+          } catch (error) {
+            console.log('🔍 PRODUCT CONTROLLER: Error finding vendors by city:', error.message);
+          }
         }
         
-        // Filter by vendor state (temporarily disabled for debugging)
+        // Filter by vendor state (case-insensitive contains)
         if (locationFilter.state) {
-          console.log('🔍 PRODUCT CONTROLLER: State filter disabled for debugging');
+          console.log('🔍 PRODUCT CONTROLLER: Adding vendor state filter:', locationFilter.state);
+          try {
+            const vendorsWithState = await strapi.entityService.findMany('api::vendor.vendor', {
+              filters: { 
+                state: {
+                  $containsi: locationFilter.state
+                }
+              }
+            });
+            
+            if (vendorsWithState.length > 0) {
+              const vendorIds = vendorsWithState.map(v => v.id);
+              console.log('🔍 PRODUCT CONTROLLER: Found vendor IDs with state:', vendorIds);
+              locationConditions.push({
+                vendor: {
+                  id: {
+                    $in: vendorIds
+                  }
+                }
+              });
+            }
+          } catch (error) {
+            console.log('🔍 PRODUCT CONTROLLER: Error finding vendors by state:', error.message);
+          }
         }
         
-        console.log('🔍 PRODUCT CONTROLLER: Final vendor filter:', query.filters.vendor);
+        // Apply OR condition if we have any location filters
+        if (locationConditions.length > 0) {
+          query.filters.$or = locationConditions;
+          console.log('🔍 PRODUCT CONTROLLER: Final OR filters:', query.filters.$or);
+        } else {
+          console.log('🔍 PRODUCT CONTROLLER: No vendors found with location criteria, setting empty result');
+          query.filters.id = { $eq: -1 }; // This will return no results
+        }
+        
+        console.log('🔍 PRODUCT CONTROLLER: Final filters:', query.filters);
         
         // Remove the location filter from query as we've processed it
         delete query.filters.location;

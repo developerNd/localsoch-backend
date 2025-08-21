@@ -73,6 +73,124 @@ module.exports = {
     }
   },
 
+  // Get only cities (not villages) for a specific district in a state
+  async getCitiesOnly(ctx) {
+    try {
+      const { stateId, districtName } = ctx.params;
+      
+      const state = locationData.getStateById(stateId);
+      if (!state) {
+        return ctx.notFound('State not found');
+      }
+
+      const cities = locationData.getCitiesOnlyForDistrict(stateId, districtName);
+      
+      ctx.send({
+        data: cities,
+        meta: {
+          stateId,
+          stateName: state.name,
+          districtName,
+          total: cities.length
+        }
+      });
+    } catch (error) {
+      ctx.badRequest('Failed to fetch cities', { error: error.message });
+    }
+  },
+
+  // Get location data for a specific pincode
+  async getPincodeData(ctx) {
+    try {
+      const { pincode } = ctx.params;
+      
+      if (!pincode || pincode.length !== 6) {
+        return ctx.badRequest('Invalid pincode format');
+      }
+
+      const pincodeData = locationData.searchPincodeAcrossStates(pincode);
+      
+      if (pincodeData.length === 0) {
+        return ctx.notFound('Pincode not found');
+      }
+
+      // Return the first match (most relevant)
+      const result = pincodeData[0];
+      
+      ctx.send({
+        data: {
+          pincode: result.pincode,
+          city: result.city,
+          district: result.district,
+          state: result.state,
+          stateId: result.stateId
+        },
+        meta: {
+          total: pincodeData.length,
+          alternatives: pincodeData.length > 1 ? pincodeData.slice(1) : []
+        }
+      });
+    } catch (error) {
+      ctx.badRequest('Failed to fetch pincode data', { error: error.message });
+    }
+  },
+
+  // Get city data by pincode (alias for getPincodeData)
+  async getCityByPincode(ctx) {
+    return this.getPincodeData(ctx);
+  },
+
+  // Get all cities (not villages) for a state
+  async getAllCities(ctx) {
+    try {
+      const { stateId } = ctx.params;
+      
+      const state = locationData.getStateById(stateId);
+      if (!state) {
+        return ctx.notFound('State not found');
+      }
+
+      const cities = locationData.getAllCitiesForState(stateId);
+      
+      ctx.send({
+        data: cities,
+        meta: {
+          stateId,
+          stateName: state.name,
+          total: cities.length
+        }
+      });
+    } catch (error) {
+      ctx.badRequest('Failed to fetch cities', { error: error.message });
+    }
+  },
+
+  // Get pincodes for a specific city in a state
+  async getPincodesForCity(ctx) {
+    try {
+      const { stateId, cityName } = ctx.params;
+      
+      const state = locationData.getStateById(stateId);
+      if (!state) {
+        return ctx.notFound('State not found');
+      }
+
+      const pincodes = locationData.getPincodesForCity(stateId, cityName);
+      
+      ctx.send({
+        data: pincodes,
+        meta: {
+          stateId,
+          stateName: state.name,
+          cityName,
+          total: pincodes.length
+        }
+      });
+    } catch (error) {
+      ctx.badRequest('Failed to fetch pincodes', { error: error.message });
+    }
+  },
+
   // Search cities in a state
   async searchCities(ctx) {
     try {
@@ -107,43 +225,6 @@ module.exports = {
       });
     } catch (error) {
       ctx.badRequest('Failed to search cities', { error: error.message });
-    }
-  },
-
-  // Get city details by pincode (searches across all states)
-  async getCityByPincode(ctx) {
-    try {
-      const { pincode } = ctx.params;
-      
-      if (!pincode || pincode.length !== 6) {
-        return ctx.badRequest('Pincode must be 6 digits');
-      }
-
-      // Search across all available states
-      const states = locationData.getStates();
-      let result = null;
-
-      for (const state of states) {
-        const cityInfo = locationData.getPincodeForCity(state.id, pincode);
-        if (cityInfo) {
-          result = {
-            ...cityInfo,
-            state: state.name,
-            stateId: state.id
-          };
-          break;
-        }
-      }
-
-      if (!result) {
-        return ctx.notFound('Pincode not found');
-      }
-
-      ctx.send({
-        data: result
-      });
-    } catch (error) {
-      ctx.badRequest('Failed to fetch city by pincode', { error: error.message });
     }
   },
 

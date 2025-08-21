@@ -95,6 +95,12 @@
     },
     "fcmToken": {
       "type": "string"
+    },
+    "carts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cart.cart",
+      "mappedBy": "user"
     }
   }
 } 

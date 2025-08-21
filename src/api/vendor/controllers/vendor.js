@@ -77,11 +77,37 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       // Filter by city (case-insensitive contains)
       if (locationFilter.city) {
         console.log('🔍 VENDOR CONTROLLER: Adding city filter:', locationFilter.city);
+        
+        // Clean the city name to remove common suffixes
+        const cleanCityName = locationFilter.city
+          .toLowerCase()
+          .replace(/\b(so|sub|office|district|tahsil|taluk|block|nagar|colony|area|zone)\b/g, '')
+          .trim();
+        
         locationConditions.push({
           city: {
-            $containsi: locationFilter.city
+            $containsi: cleanCityName
           }
         });
+        
+        // Debug: Check what vendors exist with this city
+        try {
+          const vendorsWithCity = await strapi.entityService.findMany('api::vendor.vendor', {
+            filters: { 
+              city: {
+                $containsi: cleanCityName
+              }
+            }
+          });
+          console.log('🔍 VENDOR CONTROLLER: Found vendors with city filter:', {
+            originalCity: locationFilter.city,
+            cleanCity: cleanCityName,
+            count: vendorsWithCity.length,
+            vendors: vendorsWithCity.map(v => ({ id: v.id, name: v.name, city: v.city, pincode: v.pincode }))
+          });
+        } catch (error) {
+          console.log('🔍 VENDOR CONTROLLER: Error checking vendors with city:', error.message);
+        }
       }
       
       // Filter by state (case-insensitive contains)
@@ -159,6 +185,18 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         businessCategory: data[0].businessCategory
       } : null
     });
+    
+    // Debug: Log all returned vendors for location debugging
+    if (data && data.length > 0) {
+      console.log('🔍 VENDOR CONTROLLER: All returned vendors:', data.map(v => ({
+        id: v.id,
+        name: v.name,
+        city: v.city,
+        state: v.state,
+        pincode: v.pincode,
+        status: v.status
+      })));
+    }
 
     // Add review stats to each vendor
     if (data && data.length > 0) {
@@ -400,7 +438,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       const filters = { ...query.filters };
       
       // Set up populate
-      const populate = ['user', 'products', 'buttonClicks', 'profileImage'];
+      const populate = ['user', 'products', 'buttonClicks', 'profileImage', 'businessCategory'];
       
       // Get vendors
       const vendors = await strapi.entityService.findMany('api::vendor.vendor', {
@@ -447,7 +485,9 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
   async updateVendorStatus(ctx) {
     try {
       const { id } = ctx.params;
-      const { status, reason } = ctx.request.body;
+      const { status, reason, businessCategory } = ctx.request.body;
+
+      console.log('🔍 updateVendorStatus called with:', { id, status, reason, businessCategory });
 
       // Check if user is admin
       if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
@@ -463,13 +503,24 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         return ctx.notFound('Vendor not found');
       }
 
+      // Prepare update data
+      const updateData = {
+        status: status,
+        statusReason: reason,
+        statusUpdatedAt: new Date()
+      };
+
+      // Add business category if provided
+      if (businessCategory) {
+        updateData.businessCategory = businessCategory;
+        console.log('🔍 Adding business category to update:', businessCategory);
+      }
+
+      console.log('🔍 Final update data:', updateData);
+
       // Update vendor status
       const updatedVendor = await strapi.entityService.update('api::vendor.vendor', id, {
-        data: {
-          status: status,
-          statusReason: reason,
-          statusUpdatedAt: new Date()
-        }
+        data: updateData
       });
 
       // If vendor is approved, update user role to seller
@@ -1408,7 +1459,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
 
       // Get all vendors with user and product data
       const vendors = await strapi.entityService.findMany('api::vendor.vendor', {
-        populate: ['user', 'products', 'profileImage']
+        populate: ['user', 'products', 'profileImage', 'businessCategory']
       });
 
       console.log('📊 Found vendors:', vendors.length);

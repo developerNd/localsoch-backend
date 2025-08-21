@@ -42,6 +42,42 @@ module.exports = {
       },
     },
     
+    // Get only cities (not villages) for a specific district in a state
+    {
+      method: 'GET',
+      path: '/location/states/:stateId/districts/:districtName/cities-only',
+      handler: 'location.getCitiesOnly',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    
+    // Get all cities (not villages) for a state
+    {
+      method: 'GET',
+      path: '/location/states/:stateId/cities',
+      handler: 'location.getAllCities',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    
+    // Get pincodes for a specific city in a state
+    {
+      method: 'GET',
+      path: '/location/states/:stateId/cities/:cityName/pincodes',
+      handler: 'location.getPincodesForCity',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    
     // Search cities in a state
     {
       method: 'GET',

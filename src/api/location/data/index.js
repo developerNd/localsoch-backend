@@ -351,6 +351,23 @@ module.exports = {
     return district && district.pincodes ? district.pincodes : [];
   },
 
+  // Get only cities (PO type) for a specific district in a state
+  getCitiesOnlyForDistrict: (stateId, districtName) => {
+    const stateData = STATE_DATA_MAP[stateId];
+    if (!stateData || !stateData.districts) return [];
+    
+    const district = stateData.districts.find(d => 
+      d.name.toLowerCase() === districtName.toLowerCase()
+    );
+    
+    if (!district || !district.pincodes) return [];
+    
+    // Filter only cities (PO type) - exclude villages (BO type)
+    return district.pincodes.filter(city => 
+      city.officeType === 'PO' || city.officeType === 'SO'
+    );
+  },
+
   // Search cities by name across all districts in a state
   searchCitiesInState: (stateId, searchTerm) => {
     const stateData = STATE_DATA_MAP[stateId];
@@ -373,6 +390,106 @@ module.exports = {
     });
     
     return results;
+  },
+
+  // Search only cities (PO type) by name across all districts in a state
+  searchCitiesOnlyInState: (stateId, searchTerm) => {
+    const stateData = STATE_DATA_MAP[stateId];
+    if (!stateData || !stateData.districts) return [];
+    
+    const searchLower = searchTerm.toLowerCase();
+    const results = [];
+    const cityNames = new Set();
+    
+    stateData.districts.forEach(district => {
+      if (district.pincodes) {
+        district.pincodes.forEach(city => {
+          // Only include cities (PO/SO type), exclude villages (BO type)
+          if (city.officeType === 'PO' || city.officeType === 'SO') {
+            // Extract main city name (remove suffixes like "SO", "HO", "Town", etc.)
+            let mainCityName = city.name;
+            mainCityName = mainCityName.replace(/\s+(SO|HO|Town|Colliery|Project|Nagar|Basti|Bazar|Bhawan)\s*$/i, '');
+            
+            // Check if main city name matches search term and we haven't added it yet
+            if (mainCityName.toLowerCase().includes(searchLower) && !cityNames.has(mainCityName)) {
+              cityNames.add(mainCityName);
+              results.push({
+                name: mainCityName,
+                district: district.name,
+                originalName: city.name,
+                pincode: city.pincode
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    return results;
+  },
+
+  // Get all cities (not villages) for a state
+  getAllCitiesForState: (stateId) => {
+    const stateData = STATE_DATA_MAP[stateId];
+    if (!stateData || !stateData.districts) return [];
+    
+    const cities = [];
+    const cityNames = new Set();
+    
+    stateData.districts.forEach(district => {
+      if (district.pincodes) {
+        district.pincodes.forEach(city => {
+          // Only include cities (PO/SO type), exclude villages (BO type)
+          if (city.officeType === 'PO' || city.officeType === 'SO') {
+            // Extract main city name (remove suffixes like "SO", "HO", "Town", etc.)
+            let mainCityName = city.name;
+            
+            // Remove common suffixes
+            mainCityName = mainCityName.replace(/\s+(SO|HO|Town|Colliery|Project|Nagar|Basti|Bazar|Bhawan)\s*$/i, '');
+            
+            // Only add if we haven't seen this main city name before
+            if (!cityNames.has(mainCityName)) {
+              cityNames.add(mainCityName);
+              cities.push({
+                name: mainCityName,
+                district: district.name,
+                originalName: city.name,
+                pincode: city.pincode
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    return cities;
+  },
+
+  // Get pincodes for a specific city in a state
+  getPincodesForCity: (stateId, cityName) => {
+    const stateData = STATE_DATA_MAP[stateId];
+    if (!stateData || !stateData.districts) return [];
+    
+    const pincodes = [];
+    
+    stateData.districts.forEach(district => {
+      if (district.pincodes) {
+        district.pincodes.forEach(city => {
+          // Match city name (case insensitive)
+          if (city.name.toLowerCase().includes(cityName.toLowerCase()) ||
+              cityName.toLowerCase().includes(city.name.toLowerCase())) {
+            pincodes.push({
+              pincode: city.pincode,
+              name: city.name,
+              district: district.name,
+              officeType: city.officeType
+            });
+          }
+        });
+      }
+    });
+    
+    return pincodes;
   },
 
   // Get pincode for a specific city

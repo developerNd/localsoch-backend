@@ -26,6 +26,16 @@ const customRouter = (innerRouter, extraRoutes = []) => {
 const myExtraRoutes = [
   {
     method: 'GET',
+    path: '/vendors/:id/button-analytics',
+    handler: 'api::vendor.vendor.getButtonAnalytics',
+    config: {
+      auth: false, // Allow unauthenticated access for analytics
+      policies: [],
+      middlewares: [],
+    },
+  },
+  {
+    method: 'GET',
     path: '/vendors/:id/button-click-logs',
     handler: 'api::vendor.vendor.getButtonClickLogs',
     config: {

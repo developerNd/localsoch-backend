@@ -106,9 +106,13 @@ module.exports = createCoreService('api::button-click-log.button-click-log', ({ 
         sort: { clickedAt: 'desc' }
       });
 
-      // Calculate analytics
+      // Calculate analytics with the expected frontend format
       const analytics = {
         totalClicks: logs.length,
+        buttonClicks: {
+          callClicks: 0,
+          whatsappClicks: 0
+        },
         buttonTypeStats: {},
         dailyStats: {},
         hourlyStats: {},
@@ -119,6 +123,13 @@ module.exports = createCoreService('api::button-click-log.button-click-log', ({ 
         // Button type stats
         const type = log.buttonType || 'unknown';
         analytics.buttonTypeStats[type] = (analytics.buttonTypeStats[type] || 0) + 1;
+
+        // Map to expected frontend format
+        if (type === 'call') {
+          analytics.buttonClicks.callClicks++;
+        } else if (type === 'whatsapp' || type === 'message') {
+          analytics.buttonClicks.whatsappClicks++;
+        }
 
         // Daily stats
         const date = new Date(log.clickedAt).toISOString().split('T')[0];
