@@ -91,7 +91,8 @@ module.exports = createCoreService('api::cart.cart', ({ strapi }) => ({
   async updateCartItemQuantity(cartItemId, userId, quantity) {
     const cartItem = await strapi.entityService.findOne('api::cart.cart', cartItemId, {
       populate: {
-        product: true
+        product: true,
+        user: true
       }
     });
 
@@ -99,7 +100,9 @@ module.exports = createCoreService('api::cart.cart', ({ strapi }) => ({
       throw new Error('Cart item not found');
     }
 
-    if (cartItem.user !== userId) {
+    // Check if user field is populated as object or just ID
+    const cartItemUserId = cartItem.user?.id || cartItem.user;
+    if (cartItemUserId !== userId) {
       throw new Error('Not authorized to update this cart item');
     }
 
@@ -116,13 +119,19 @@ module.exports = createCoreService('api::cart.cart', ({ strapi }) => ({
 
   // Remove cart item (soft delete)
   async removeCartItem(cartItemId, userId) {
-    const cartItem = await strapi.entityService.findOne('api::cart.cart', cartItemId);
+    const cartItem = await strapi.entityService.findOne('api::cart.cart', cartItemId, {
+      populate: {
+        user: true
+      }
+    });
 
     if (!cartItem) {
       throw new Error('Cart item not found');
     }
 
-    if (cartItem.user !== userId) {
+    // Check if user field is populated as object or just ID
+    const cartItemUserId = cartItem.user?.id || cartItem.user;
+    if (cartItemUserId !== userId) {
       throw new Error('Not authorized to remove this cart item');
     }
 

@@ -12,8 +12,15 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     try {
       const { user } = ctx.state;
       
+      // If user is not authenticated, return empty cart
       if (!user) {
-        return ctx.unauthorized('User not authenticated');
+        console.log('🔍 CART: User not authenticated, returning empty cart');
+        return ctx.send({
+          data: [],
+          meta: {
+            count: 0
+          }
+        });
       }
 
       const cartItems = await strapi.entityService.findMany('api::cart.cart', {
@@ -54,8 +61,13 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       const { user } = ctx.state;
       const cartData = ctx.request.body.data || ctx.request.body; // Handle both formats
 
+      // If user is not authenticated, return success but don't save to database
       if (!user) {
-        return ctx.unauthorized('User not authenticated');
+        console.log('🔍 CART: User not authenticated, skipping database save');
+        return ctx.send({
+          data: cartData,
+          message: 'Item added to local cart (user not authenticated)'
+        });
       }
 
       // Extract data from mobile app format
@@ -152,8 +164,13 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       const { id } = ctx.params;
       const updateData = ctx.request.body.data || ctx.request.body; // Handle both formats
 
+      // If user is not authenticated, return success but don't update database
       if (!user) {
-        return ctx.unauthorized('User not authenticated');
+        console.log('🔍 CART: User not authenticated, skipping database update');
+        return ctx.send({
+          data: { id, ...updateData },
+          message: 'Cart item updated locally (user not authenticated)'
+        });
       }
 
       const { quantity } = updateData;
@@ -164,7 +181,8 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       // Get cart item and verify ownership
       const cartItem = await strapi.entityService.findOne('api::cart.cart', id, {
         populate: {
-          product: true
+          product: true,
+          user: true
         }
       });
 
@@ -172,7 +190,9 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
         return ctx.notFound('Cart item not found');
       }
 
-      if (cartItem.user !== user.id) {
+      // Check if user field is populated as object or just ID
+      const cartItemUserId = cartItem.user?.id || cartItem.user;
+      if (cartItemUserId !== user.id) {
         return ctx.forbidden('Not authorized to update this cart item');
       }
 
@@ -202,18 +222,28 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
       const { user } = ctx.state;
       const { id } = ctx.params;
 
+      // If user is not authenticated, return success but don't update database
       if (!user) {
-        return ctx.unauthorized('User not authenticated');
+        console.log('🔍 CART: User not authenticated, skipping database removal');
+        return ctx.send({
+          message: 'Item removed from local cart (user not authenticated)'
+        });
       }
 
       // Get cart item and verify ownership
-      const cartItem = await strapi.entityService.findOne('api::cart.cart', id);
+      const cartItem = await strapi.entityService.findOne('api::cart.cart', id, {
+        populate: {
+          user: true
+        }
+      });
 
       if (!cartItem) {
         return ctx.notFound('Cart item not found');
       }
 
-      if (cartItem.user !== user.id) {
+      // Check if user field is populated as object or just ID
+      const cartItemUserId = cartItem.user?.id || cartItem.user;
+      if (cartItemUserId !== user.id) {
         return ctx.forbidden('Not authorized to remove this cart item');
       }
 
@@ -239,8 +269,15 @@ module.exports = createCoreController('api::cart.cart', ({ strapi }) => ({
     try {
       const { user } = ctx.state;
 
+      // If user is not authenticated, return success but don't update database
       if (!user) {
-        return ctx.unauthorized('User not authenticated');
+        console.log('🔍 CART: User not authenticated, skipping database clear');
+        return ctx.send({
+          message: 'Local cart cleared (user not authenticated)',
+          meta: {
+            itemsRemoved: 0
+          }
+        });
       }
 
       // Get all active cart items for user

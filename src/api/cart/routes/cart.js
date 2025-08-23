@@ -14,6 +14,7 @@ module.exports = {
       path: '/cart',
       handler: 'cart.getUserCart',
       config: {
+        auth: false, // Allow unauthenticated access
         policies: [],
         middlewares: [],
       },
@@ -23,6 +24,7 @@ module.exports = {
       path: '/cart',
       handler: 'cart.addToCart',
       config: {
+        auth: false, // Allow unauthenticated access
         policies: [],
         middlewares: [],
       },
@@ -32,6 +34,7 @@ module.exports = {
       path: '/cart/:id',
       handler: 'cart.updateCartItem',
       config: {
+        auth: false, // Allow unauthenticated access
         policies: [],
         middlewares: [],
       },
@@ -41,6 +44,7 @@ module.exports = {
       path: '/cart/:id',
       handler: 'cart.removeFromCart',
       config: {
+        auth: false, // Allow unauthenticated access
         policies: [],
         middlewares: [],
       },
@@ -50,6 +54,7 @@ module.exports = {
       path: '/cart/clear',
       handler: 'cart.clearCart',
       config: {
+        auth: false, // Allow unauthenticated access
         policies: [],
         middlewares: [],
       },
