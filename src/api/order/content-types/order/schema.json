@@ -27,6 +27,11 @@
     "pickupTime": { "type": "string" },
     "paymentMethod": { "type": "string" },
     "paymentStatus": { "type": "enumeration", "enum": ["pending", "paid", "failed"], "default": "pending" },
-    "notes": { "type": "text" }
+    "notes": { "type": "text" },
+    "couponCode": { "type": "string" },
+    "couponDiscount": { "type": "decimal", "default": 0 },
+    "couponPercentage": { "type": "decimal", "default": 0 },
+    "subtotal": { "type": "decimal", "default": 0 },
+    "discountAmount": { "type": "decimal", "default": 0 }
   }
 } 

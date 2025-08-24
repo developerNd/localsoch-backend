@@ -83,5 +83,15 @@ module.exports = {
         middlewares: [],
       },
     },
+    // Customer cancel order route
+    {
+      method: 'PUT',
+      path: '/orders/:id/cancel',
+      handler: 'order.cancelOrder',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

@@ -327,6 +327,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const { id } = ctx.params;
       const { query } = ctx;
       
+      console.log('🔍 findOne called for order ID:', id);
+      
       // Add populate for vendor and products by default
       if (!query.populate) {
         query.populate = ['vendor', 'products', 'user'];
@@ -357,12 +359,21 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         }
       }
       
-      // Call the default findOne method
-      const { data, meta } = await super.findOne(ctx);
+      // Use entityService directly instead of super.findOne
+      const order = await strapi.entityService.findOne('api::order.order', id, {
+        populate: query.populate
+      });
       
-      return { data, meta };
+      if (!order) {
+        return ctx.notFound('Order not found');
+      }
+      
+      console.log('✅ Order found:', order.id, order.orderNumber);
+      
+      return this.transformResponse(order);
     } catch (error) {
-      ctx.throw(500, error);
+      console.error('❌ Error in findOne:', error);
+      return ctx.internalServerError('Failed to fetch order details');
     }
   },
 
@@ -591,12 +602,14 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       }, 0);
     }
 
-    // Calculate total amount including delivery charge
-    const totalAmount = subtotal + deliveryCharge;
+    // Calculate total amount including delivery charge and coupon discount
+    const couponDiscount = data.discountAmount || 0;
+    const totalAmount = subtotal + deliveryCharge - couponDiscount;
 
     console.log('💰 Order calculation:', {
       subtotal,
       deliveryCharge,
+      couponDiscount,
       totalAmount
     });
 
@@ -621,6 +634,12 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       vendor: vendorId, // set the vendor relation
       deliveryCharge: deliveryCharge,
       totalAmount: totalAmount,
+      // Preserve coupon information
+      couponCode: data.couponCode || null,
+      couponDiscount: data.couponDiscount || 0,
+      couponPercentage: data.couponPercentage || 0,
+      subtotal: data.subtotal || subtotal,
+      discountAmount: data.discountAmount || 0,
     };
 
     console.log('📝 Final order data:', JSON.stringify(orderData, null, 2));
@@ -740,14 +759,20 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const { id } = ctx.params;
     const { data } = ctx.request.body;
 
+    console.log('🔍 update called for order ID:', id);
+    console.log('🔍 update data:', data);
+
     try {
       // Get the existing order to preserve required fields
-      const existingOrder = await strapi.service('api::order.order').findOne(id, {
+      const existingOrder = await strapi.entityService.findOne('api::order.order', id, {
         populate: ['vendor', 'user']
       });
       if (!existingOrder) {
+        console.log('❌ Order not found in update method');
         return ctx.notFound('Order not found');
       }
+      
+      console.log('✅ Existing order found:', existingOrder.id, existingOrder.orderNumber);
 
       // For customers, check if they own this order
       if (ctx.state.user && ctx.state.user.role && ctx.state.user.role.name === 'authenticated') {
@@ -800,10 +825,46 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         id: undefined // Remove id from data to avoid conflicts
       };
 
-      // Update the order
-      const response = await strapi.service('api::order.order').update(id, { data: updateData });
+      // Store previous status for stock adjustment
+      const previousStatus = existingOrder.status;
 
-      return this.transformResponse(response);
+      // Update the order using entityService instead of service
+      const response = await strapi.entityService.update('api::order.order', id, { 
+        data: updateData,
+        populate: ['vendor', 'user', 'products']
+      });
+      
+      console.log('✅ Order update response:', response ? 'Success' : 'Null');
+
+      // Handle stock restoration for cancelled orders
+      if (data.status === 'cancelled' && previousStatus !== 'cancelled') {
+        try {
+          // Build line items from order
+          const lineItems = Array.isArray(existingOrder.orderItems) && existingOrder.orderItems.length > 0
+            ? existingOrder.orderItems.map((item) => ({ productId: item.productId || item.product, quantity: parseInt(item.quantity, 10) || 1 }))
+            : (Array.isArray(existingOrder.products) ? existingOrder.products.map((p) => ({ productId: p.id || p, quantity: 1 })) : []);
+
+          // Restore stock for cancelled order
+          for (const item of lineItems) {
+            if (!item.productId) continue;
+            const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+            if (!product) continue;
+            const currentStock = parseInt(product.stock, 10) || 0;
+            const restored = currentStock + (parseInt(item.quantity, 10) || 0);
+            await strapi.entityService.update('api::product.product', item.productId, { data: { stock: restored } });
+          }
+          console.log('✅ Stock restored due to order cancellation');
+        } catch (stockAdjustError) {
+          console.error('⚠️ Error adjusting stock:', stockAdjustError);
+          // Don't fail the cancellation if stock adjustment fails
+        }
+      }
+
+      console.log('🔍 About to return transformed response');
+      const transformedResponse = this.transformResponse(response);
+      console.log('✅ Transformed response:', transformedResponse ? 'Success' : 'Null');
+      
+      return transformedResponse;
     } catch (error) {
       console.error('❌ Error updating order:', error.message);
       
@@ -919,6 +980,94 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     } catch (error) {
       console.error('❌ Error generating invoice:', error);
       return ctx.internalServerError('Failed to generate invoice');
+    }
+  },
+
+  // Customer cancel order
+  async cancelOrder(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { reason } = ctx.request.body;
+      
+      console.log('🔍 cancelOrder called with:', { id, reason });
+      console.log('🔍 User:', ctx.state.user?.id, ctx.state.user?.role?.name);
+      
+      // Check if user is authenticated
+      if (!ctx.state.user) {
+        console.log('❌ Access denied - not authenticated');
+        return ctx.unauthorized('You must be logged in to cancel orders');
+      }
+
+      // Get the order
+      let order = await strapi.entityService.findOne('api::order.order', id, {
+        populate: ['vendor', 'user', 'products']
+      });
+
+      if (!order) {
+        console.log('❌ Order not found');
+        return ctx.notFound('Order not found');
+      }
+
+      // Check if user owns this order
+      if (order.user && order.user.id !== ctx.state.user.id) {
+        console.log('❌ User does not own this order');
+        return ctx.forbidden('You can only cancel your own orders');
+      }
+
+      // Check if order can be cancelled
+      const cancellableStatuses = ['pending', 'confirmed'];
+      if (!cancellableStatuses.includes(order.status)) {
+        console.log('❌ Order cannot be cancelled - status:', order.status);
+        return ctx.badRequest(`Orders with status "${order.status}" cannot be cancelled`);
+      }
+
+      const previousStatus = order.status;
+
+      // Update the order status to cancelled
+      console.log('🔧 Cancelling order with ID:', order.id);
+      const updatedOrder = await strapi.entityService.update('api::order.order', order.id, {
+        data: { 
+          status: 'cancelled',
+          statusReason: reason || 'Cancelled by customer',
+          statusUpdatedAt: new Date(),
+          notes: order.notes ? `${order.notes}\nOrder cancelled by customer on ${new Date().toLocaleString()}. ${reason || 'No reason provided'}` : `Order cancelled by customer on ${new Date().toLocaleString()}. ${reason || 'No reason provided'}`
+        },
+        populate: ['vendor', 'user', 'products']
+      });
+      
+      console.log('✅ Order cancelled successfully:', updatedOrder.id, updatedOrder.status);
+
+      // Restore stock since order is cancelled
+      try {
+        // Build line items from order
+        const lineItems = Array.isArray(order.orderItems) && order.orderItems.length > 0
+          ? order.orderItems.map((item) => ({ productId: item.productId || item.product, quantity: parseInt(item.quantity, 10) || 1 }))
+          : (Array.isArray(order.products) ? order.products.map((p) => ({ productId: p.id || p, quantity: 1 })) : []);
+
+        // Restore stock for cancelled order
+        for (const item of lineItems) {
+          if (!item.productId) continue;
+          const product = await strapi.entityService.findOne('api::product.product', item.productId, { fields: ['stock'] });
+          if (!product) continue;
+          const currentStock = parseInt(product.stock, 10) || 0;
+          const restored = currentStock + (parseInt(item.quantity, 10) || 0);
+          await strapi.entityService.update('api::product.product', item.productId, { data: { stock: restored } });
+        }
+        console.log('✅ Stock restored due to order cancellation');
+      } catch (stockAdjustError) {
+        console.error('⚠️ Error adjusting stock:', stockAdjustError);
+        // Don't fail the cancellation if stock adjustment fails
+      }
+
+      return {
+        success: true,
+        message: 'Order cancelled successfully',
+        data: updatedOrder
+      };
+
+    } catch (error) {
+      console.error('❌ Error cancelling order:', error);
+      return ctx.internalServerError('Failed to cancel order');
     }
   },
 })); 

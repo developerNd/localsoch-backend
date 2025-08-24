@@ -181,10 +181,10 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
           referralCode: referralData.referralCode,
           rewardAmount: referralData.rewardAmount,
           rewardType: referralData.rewardType,
-          referrer: {
+          referrer: referralData.referrer ? {
             id: referralData.referrer.id,
             username: referralData.referrer.username
-          }
+          } : null
         }
       });
     } catch (error) {
@@ -246,9 +246,13 @@ module.exports = createCoreController('api::referral.referral', ({ strapi }) => 
       let rewardMessage = '';
 
       if (userType === 'user') {
-        // If regular user logs in: User gets ₹10
-        userReward = 10;
-        rewardMessage = 'Referral code applied! You get ₹10 cashback.';
+        // If regular user logs in: User gets 20% discount coupon
+        userReward = 0; // No cashback, only coupon
+        rewardMessage = 'Referral code applied! You get a 20% discount coupon for your first order.';
+        
+        // Note: We no longer create coupons during registration
+        // Referral codes are used directly as coupon codes during checkout
+        console.log('✅ Referral code applied successfully');
       } else if (userType === 'seller') {
         // If seller logs in: Seller gets 20% discount
         sellerDiscount = 20;

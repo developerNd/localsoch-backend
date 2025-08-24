@@ -101,6 +101,10 @@
       "relation": "oneToMany",
       "target": "api::cart.cart",
       "mappedBy": "user"
+    },
+    "hasUsedStaticCoupon": {
+      "type": "boolean",
+      "default": false
     }
   }
 } 

@@ -684,6 +684,56 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCouponCoupon extends Struct.CollectionTypeSchema {
+  collectionName: 'coupons';
+  info: {
+    description: 'Coupon system for discounts and promotions';
+    displayName: 'Coupon';
+    pluralName: 'coupons';
+    singularName: 'coupon';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    code: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    couponType: Schema.Attribute.Enumeration<
+      ['referral', 'promotional', 'loyalty']
+    > &
+      Schema.Attribute.DefaultTo<'referral'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    discountAmount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    discountPercentage: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<20>;
+    expiresAt: Schema.Attribute.DateTime;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::coupon.coupon'
+    > &
+      Schema.Attribute.Private;
+    maxDiscountAmount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    minOrderAmount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    usageLimit: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    usedBy: Schema.Attribute.Relation<
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
+    usedCount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 export interface ApiFeaturedProductFeaturedProduct
   extends Struct.CollectionTypeSchema {
   collectionName: 'featured_products';
@@ -847,6 +897,9 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    couponCode: Schema.Attribute.String;
+    couponDiscount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    couponPercentage: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -856,6 +909,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     deliveryCharge: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     deliveryType: Schema.Attribute.Enumeration<['delivery', 'pickup']> &
       Schema.Attribute.DefaultTo<'delivery'>;
+    discountAmount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
       Schema.Attribute.Private;
@@ -884,6 +938,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       ]
     > &
       Schema.Attribute.DefaultTo<'pending'>;
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     totalAmount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1716,6 +1771,8 @@ export interface PluginUsersPermissionsUser
     email: Schema.Attribute.Email & Schema.Attribute.Unique;
     fcmToken: Schema.Attribute.String;
     firstName: Schema.Attribute.String;
+    hasUsedStaticCoupon: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     lastName: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1771,6 +1828,7 @@ declare module '@strapi/strapi' {
       'api::button-click-log.button-click-log': ApiButtonClickLogButtonClickLog;
       'api::cart.cart': ApiCartCart;
       'api::category.category': ApiCategoryCategory;
+      'api::coupon.coupon': ApiCouponCoupon;
       'api::featured-product.featured-product': ApiFeaturedProductFeaturedProduct;
       'api::global.global': ApiGlobalGlobal;
       'api::notification.notification': ApiNotificationNotification;

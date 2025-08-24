@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "coupons",
+  "info": {
+    "singularName": "coupon",
+    "pluralName": "coupons",
+    "displayName": "Coupon",
+    "description": "Coupon system for discounts and promotions"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "discountPercentage": {
+      "type": "decimal",
+      "required": true,
+      "default": 20
+    },
+    "discountAmount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "minOrderAmount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "maxDiscountAmount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "usageLimit": {
+      "type": "integer",
+      "default": 1
+    },
+    "usedCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "expiresAt": {
+      "type": "datetime"
+    },
+    "createdBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "usedBy": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "couponType": {
+      "type": "enumeration",
+      "enum": [
+        "referral",
+        "promotional",
+        "loyalty"
+      ],
+      "default": "referral"
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+} 
