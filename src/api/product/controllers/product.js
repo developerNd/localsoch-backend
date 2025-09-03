@@ -257,11 +257,18 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
         query.populate = ['vendor', 'image', 'category'];
       }
       
-      // Call the default findOne method
-      const { data, meta } = await super.findOne(ctx);
+      // Use entityService directly to avoid response format issues
+      const product = await strapi.entityService.findOne('api::product.product', id, {
+        populate: query.populate || ['vendor', 'image', 'category']
+      });
       
-      return { data, meta };
+      if (!product) {
+        return ctx.notFound('Product not found');
+      }
+      
+      return { data: product, meta: {} };
     } catch (error) {
+      console.error('Error in findOne:', error);
       ctx.throw(500, error);
     }
   },
@@ -668,7 +675,104 @@ module.exports = createCoreController('api::product.product', ({ strapi }) => ({
     }
   },
 
+  // Get products with active offers
+  async getActiveOffers(ctx) {
+    try {
+      const { query } = ctx;
+      
+      // Get active offers from service
+      const activeOffers = await strapi.service('api::product.product').getActiveOffers();
+      
+      return ctx.send({
+        data: activeOffers,
+        meta: {
+          total: activeOffers.length,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error getting active offers:', error);
+      return ctx.internalServerError('Failed to get active offers');
+    }
+  },
 
+  // Check and update expired offers
+  async checkExpiredOffers(ctx) {
+    try {
+      // Only allow admins to manually trigger this
+      if (ctx.state.user?.role?.name !== 'admin') {
+        return ctx.forbidden('Only admins can check expired offers');
+      }
+      
+      const result = await strapi.service('api::product.product').checkExpiredOffers();
+      
+      return ctx.send({
+        message: 'Expired offers checked successfully',
+        data: result
+      });
+      
+    } catch (error) {
+      console.error('Error checking expired offers:', error);
+      return ctx.internalServerError('Failed to check expired offers');
+    }
+  },
+
+  // Activate offer for a product
+  async activateOffer(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { startDate, endDate, price } = ctx.request.body;
+      
+      // Validate required fields
+      if (!endDate || !price) {
+        return ctx.badRequest('End date and price are required');
+      }
+      
+      // Validate dates
+      const now = new Date();
+      const endDateTime = new Date(endDate);
+      
+      if (endDateTime <= now) {
+        return ctx.badRequest('End date must be in the future');
+      }
+      
+      // Activate offer using service
+      const updatedProduct = await strapi.service('api::product.product').activateOffer(id, {
+        startDate: startDate || now,
+        endDate: endDateTime,
+        price: parseFloat(price)
+      });
+      
+      return ctx.send({
+        message: 'Offer activated successfully',
+        data: updatedProduct
+      });
+      
+    } catch (error) {
+      console.error('Error activating offer:', error);
+      return ctx.internalServerError('Failed to activate offer');
+    }
+  },
+
+  // Deactivate offer for a product
+  async deactivateOffer(ctx) {
+    try {
+      const { id } = ctx.params;
+      
+      // Deactivate offer using service
+      const updatedProduct = await strapi.service('api::product.product').deactivateOffer(id);
+      
+      return ctx.send({
+        message: 'Offer deactivated successfully',
+        data: updatedProduct
+      });
+      
+    } catch (error) {
+      console.error('Error deactivating offer:', error);
+      return ctx.internalServerError('Failed to deactivate offer');
+    }
+  },
 
   // Update method
   async update(ctx) {

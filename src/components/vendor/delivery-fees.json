@@ -1,0 +1,47 @@
+{
+  "collectionName": "components_vendor_delivery_fees",
+  "info": {
+    "displayName": "Delivery Fees",
+    "description": "Delivery fee configuration based on distance and order value"
+  },
+  "options": {},
+  "attributes": {
+    "baseDeliveryFee": {
+      "type": "decimal",
+      "default": "0.00",
+      "required": true
+    },
+    "freeDeliveryThreshold": {
+      "type": "decimal",
+      "default": "0.00",
+      "required": false
+    },
+    "distanceBasedFees": {
+      "type": "component",
+      "component": "vendor.distance-fee",
+      "multiple": true,
+      "required": false
+    },
+    "orderValueBasedFees": {
+      "type": "component",
+      "component": "vendor.order-value-fee",
+      "multiple": true,
+      "required": false
+    },
+    "deliveryRadius": {
+      "type": "decimal",
+      "default": "10.00",
+      "required": false
+    },
+    "deliveryTime": {
+      "type": "string",
+      "default": "1-2 hours",
+      "required": false
+    },
+    "isDeliveryAvailable": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    }
+  }
+} 

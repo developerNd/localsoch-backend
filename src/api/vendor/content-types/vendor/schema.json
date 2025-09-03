@@ -47,6 +47,14 @@
     "ifscCode": {
       "type": "string"
     },
+    "bankAccountName": {
+      "type": "string"
+    },
+    "bankAccountType": {
+      "type": "enumeration",
+      "enum": ["savings", "current"],
+      "default": "savings"
+    },
     "businessType": {
       "type": "string"
     },
@@ -123,6 +131,16 @@
     "fcmToken": {
       "type": "string",
       "private": true
+    },
+    "shopHours": {
+      "type": "component",
+      "component": "vendor.shop-hours",
+      "required": false
+    },
+    "deliveryFees": {
+      "type": "component",
+      "component": "vendor.delivery-fees",
+      "required": false
     }
   }
 }

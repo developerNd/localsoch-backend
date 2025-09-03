@@ -1,0 +1,49 @@
+{
+  "collectionName": "components_vendor_shop_hours",
+  "info": {
+    "displayName": "Shop Hours",
+    "description": "Shop business hours configuration for each day of the week"
+  },
+  "options": {},
+  "attributes": {
+    "monday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "tuesday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "wednesday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "thursday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "friday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "saturday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "sunday": {
+      "type": "component",
+      "component": "vendor.day-hours",
+      "required": false
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Asia/Kolkata"
+    }
+  }
+} 

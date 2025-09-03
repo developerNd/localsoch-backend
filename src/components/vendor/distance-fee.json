@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_vendor_distance_fees",
+  "info": {
+    "displayName": "Distance Fee",
+    "description": "Delivery fee based on distance range"
+  },
+  "options": {},
+  "attributes": {
+    "minDistance": {
+      "type": "decimal",
+      "required": true
+    },
+    "maxDistance": {
+      "type": "decimal",
+      "required": true
+    },
+    "fee": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "required": false
+    }
+  }
+} 

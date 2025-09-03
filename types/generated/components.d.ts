@@ -147,6 +147,98 @@ export interface VendorButtonItem extends Struct.ComponentSchema {
   };
 }
 
+export interface VendorDayHours extends Struct.ComponentSchema {
+  collectionName: 'components_vendor_day_hours';
+  info: {
+    description: 'Business hours for a specific day';
+    displayName: 'Day Hours';
+  };
+  attributes: {
+    breakEnd: Schema.Attribute.Time;
+    breakStart: Schema.Attribute.Time;
+    closeTime: Schema.Attribute.Time;
+    isOpen: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    notes: Schema.Attribute.String;
+    openTime: Schema.Attribute.Time;
+  };
+}
+
+export interface VendorDeliveryFees extends Struct.ComponentSchema {
+  collectionName: 'components_vendor_delivery_fees';
+  info: {
+    description: 'Delivery fee configuration based on distance and order value';
+    displayName: 'Delivery Fees';
+  };
+  attributes: {
+    baseDeliveryFee: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'0.00'>;
+    deliveryRadius: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<'10.00'>;
+    deliveryTime: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'1-2 hours'>;
+    distanceBasedFees: Schema.Attribute.Component<'vendor.distance-fee', false>;
+    freeDeliveryThreshold: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<'0.00'>;
+    isDeliveryAvailable: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    orderValueBasedFees: Schema.Attribute.Component<
+      'vendor.order-value-fee',
+      false
+    >;
+  };
+}
+
+export interface VendorDistanceFee extends Struct.ComponentSchema {
+  collectionName: 'components_vendor_distance_fees';
+  info: {
+    description: 'Delivery fee based on distance range';
+    displayName: 'Distance Fee';
+  };
+  attributes: {
+    description: Schema.Attribute.String;
+    fee: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    maxDistance: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    minDistance: Schema.Attribute.Decimal & Schema.Attribute.Required;
+  };
+}
+
+export interface VendorOrderValueFee extends Struct.ComponentSchema {
+  collectionName: 'components_vendor_order_value_fees';
+  info: {
+    description: 'Delivery fee based on order value range';
+    displayName: 'Order Value Fee';
+  };
+  attributes: {
+    description: Schema.Attribute.String;
+    fee: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    maxOrderValue: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    minOrderValue: Schema.Attribute.Decimal & Schema.Attribute.Required;
+  };
+}
+
+export interface VendorShopHours extends Struct.ComponentSchema {
+  collectionName: 'components_vendor_shop_hours';
+  info: {
+    description: 'Shop business hours configuration for each day of the week';
+    displayName: 'Shop Hours';
+  };
+  attributes: {
+    friday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    monday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    saturday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    sunday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    thursday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    timezone: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Asia/Kolkata'>;
+    tuesday: Schema.Attribute.Component<'vendor.day-hours', false>;
+    wednesday: Schema.Attribute.Component<'vendor.day-hours', false>;
+  };
+}
+
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
@@ -160,6 +252,11 @@ declare module '@strapi/strapi' {
       'vendor.button-clicks': VendorButtonClicks;
       'vendor.button-config': VendorButtonConfig;
       'vendor.button-item': VendorButtonItem;
+      'vendor.day-hours': VendorDayHours;
+      'vendor.delivery-fees': VendorDeliveryFees;
+      'vendor.distance-fee': VendorDistanceFee;
+      'vendor.order-value-fee': VendorOrderValueFee;
+      'vendor.shop-hours': VendorShopHours;
     }
   }
 }

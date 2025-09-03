@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_vendor_day_hours",
+  "info": {
+    "displayName": "Day Hours",
+    "description": "Business hours for a specific day"
+  },
+  "options": {},
+  "attributes": {
+    "isOpen": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "openTime": {
+      "type": "time",
+      "required": false
+    },
+    "closeTime": {
+      "type": "time",
+      "required": false
+    },
+    "breakStart": {
+      "type": "time",
+      "required": false
+    },
+    "breakEnd": {
+      "type": "time",
+      "required": false
+    },
+    "notes": {
+      "type": "string",
+      "required": false
+    }
+  }
+} 

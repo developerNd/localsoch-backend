@@ -112,5 +112,42 @@ module.exports = {
         middlewares: [],
       },
     },
+    // Offer management routes
+    {
+      method: 'GET',
+      path: '/products/offers/active',
+      handler: 'product.getActiveOffers',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/products/:id/offers/activate',
+      handler: 'product.activateOffer',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/products/:id/offers/deactivate',
+      handler: 'product.deactivateOffer',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/products/offers/check-expired',
+      handler: 'product.checkExpiredOffers',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

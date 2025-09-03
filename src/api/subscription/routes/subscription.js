@@ -63,6 +63,16 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  {
+    method: 'GET',
+    path: '/subscriptions/:id/invoice',
+    handler: 'subscription.downloadInvoice',
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes); 

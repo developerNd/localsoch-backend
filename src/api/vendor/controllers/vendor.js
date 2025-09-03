@@ -893,6 +893,43 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         delete updateData.businessCategoryId;
         console.log('🔍 Converted businessCategoryId to businessCategory:', updateData.businessCategory);
       }
+
+      // Normalize deliveryFees payload to satisfy Strapi validators
+      if (updateData.deliveryFees) {
+        try {
+          const fees = updateData.deliveryFees;
+
+          // Coerce decimal-like fields to strings with 2 decimals
+          const toDecimalString = (val) => {
+            if (val === null || val === undefined || val === '') return undefined;
+            const num = typeof val === 'string' ? Number(val) : val;
+            if (Number.isNaN(num)) return undefined;
+            return num.toFixed(2);
+          };
+
+          fees.baseDeliveryFee = toDecimalString(fees.baseDeliveryFee) ?? '0.00';
+          fees.freeDeliveryThreshold = toDecimalString(fees.freeDeliveryThreshold) ?? '0.00';
+          fees.deliveryRadius = toDecimalString(fees.deliveryRadius) ?? '0.00';
+
+          // Coerce boolean
+          if (typeof fees.isDeliveryAvailable !== 'boolean') {
+            fees.isDeliveryAvailable = Boolean(fees.isDeliveryAvailable);
+          }
+
+          // Drop empty component arrays (Strapi sometimes validates shapes even when empty)
+          if (Array.isArray(fees.distanceBasedFees) && fees.distanceBasedFees.length === 0) {
+            delete fees.distanceBasedFees;
+          }
+          if (Array.isArray(fees.orderValueBasedFees) && fees.orderValueBasedFees.length === 0) {
+            delete fees.orderValueBasedFees;
+          }
+
+          updateData.deliveryFees = fees;
+          console.log('🔧 Normalized deliveryFees:', updateData.deliveryFees);
+        } catch (e) {
+          console.error('🔧 Failed to normalize deliveryFees:', e?.message || e);
+        }
+      }
       
       // Update the vendor
       const updatedVendor = await strapi.entityService.update('api::vendor.vendor', id, {

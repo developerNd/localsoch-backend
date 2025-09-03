@@ -966,7 +966,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     approvalStatus: Schema.Attribute.Enumeration<
       ['pending', 'approved', 'rejected']
     > &
-      Schema.Attribute.DefaultTo<'pending'>;
+      Schema.Attribute.DefaultTo<'approved'>;
     approvedAt: Schema.Attribute.DateTime;
     approvedBy: Schema.Attribute.Relation<
       'manyToOne',
@@ -986,7 +986,8 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     image: Schema.Attribute.Media;
     images: Schema.Attribute.Media<undefined, true>;
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
-    isApproved: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isApproved: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    isOfferActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -995,6 +996,9 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     mrp: Schema.Attribute.Decimal & Schema.Attribute.Required;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    offerEndDate: Schema.Attribute.DateTime;
+    offerStartDate: Schema.Attribute.DateTime;
+    originalPrice: Schema.Attribute.Decimal;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     stock: Schema.Attribute.Integer;
@@ -1216,7 +1220,10 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
   };
   attributes: {
     address: Schema.Attribute.Text;
+    bankAccountName: Schema.Attribute.String;
     bankAccountNumber: Schema.Attribute.String;
+    bankAccountType: Schema.Attribute.Enumeration<['savings', 'current']> &
+      Schema.Attribute.DefaultTo<'savings'>;
     businessCategory: Schema.Attribute.Relation<
       'manyToOne',
       'api::business-category.business-category'
@@ -1233,6 +1240,7 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    deliveryFees: Schema.Attribute.Component<'vendor.delivery-fees', false>;
     description: Schema.Attribute.Text;
     email: Schema.Attribute.Email;
     fcmToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1251,6 +1259,7 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
     products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     profileImage: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
+    shopHours: Schema.Attribute.Component<'vendor.shop-hours', false>;
     state: Schema.Attribute.String;
     status: Schema.Attribute.Enumeration<
       ['pending', 'approved', 'rejected', 'suspended']

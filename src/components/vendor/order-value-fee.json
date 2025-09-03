@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_vendor_order_value_fees",
+  "info": {
+    "displayName": "Order Value Fee",
+    "description": "Delivery fee based on order value range"
+  },
+  "options": {},
+  "attributes": {
+    "minOrderValue": {
+      "type": "decimal",
+      "required": true
+    },
+    "maxOrderValue": {
+      "type": "decimal",
+      "required": true
+    },
+    "fee": {
+      "type": "decimal",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "required": false
+    }
+  }
+} 

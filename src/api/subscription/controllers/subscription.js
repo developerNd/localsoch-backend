@@ -85,9 +85,27 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
         populate: ['plan', 'vendor']
       });
 
+      // Generate invoice data for the subscription
+      try {
+        const subscriptionService = strapi.service('api::subscription.subscription');
+        const invoiceData = subscriptionService.generateSubscriptionInvoiceData(subscription);
+        
+        // Store invoice data in subscription notes for reference
+        await strapi.entityService.update('api::subscription.subscription', subscription.id, {
+          data: {
+            notes: `Invoice: ${invoiceData.invoiceNumber} | Generated: ${invoiceData.invoiceDate}`
+          }
+        });
+        
+      } catch (invoiceError) {
+        console.error('Warning: Failed to generate invoice data:', invoiceError);
+        // Don't fail the subscription creation if invoice generation fails
+      }
+
       return ctx.send({
         success: true,
-        data: subscription
+        data: subscription,
+        message: 'Subscription created successfully with payment verification'
       });
     } catch (error) {
       console.error('Error creating subscription:', error);
@@ -116,6 +134,62 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
       return ctx.internalServerError('Failed to activate subscription');
     }
   },
+
+  // Download subscription invoice
+  async downloadInvoice(ctx) {
+    try {
+      const { id } = ctx.params;
+      
+      // Get the authenticated user
+      const user = ctx.state.user;
+      if (!user) {
+        return ctx.unauthorized('You must be logged in to download invoices.');
+      }
+
+      // Get the subscription with all details
+      const subscription = await strapi.entityService.findOne('api::subscription.subscription', id, {
+        populate: ['vendor', 'plan']
+      });
+
+      if (!subscription) {
+        return ctx.notFound('Subscription not found');
+      }
+
+      // Check if user has permission to access this subscription
+      if (subscription.vendor && subscription.vendor.user && subscription.vendor.user.id !== user.id) {
+        return ctx.forbidden('You can only download invoices for your own subscriptions');
+      }
+
+      // Get subscription service
+      const subscriptionService = strapi.service('api::subscription.subscription');
+      
+      if (!subscriptionService) {
+        return ctx.internalServerError('Subscription service not available');
+      }
+      
+      // Generate invoice data
+      const invoiceData = subscriptionService.generateSubscriptionInvoiceData(subscription);
+      
+      // Generate text invoice
+      const invoiceText = subscriptionService.generateSubscriptionTextInvoice(invoiceData);
+      
+      // Generate filename
+      const filename = subscriptionService.generateSubscriptionInvoiceFilename(invoiceData);
+
+      // Set response headers for file download
+      ctx.set('Content-Type', 'text/plain');
+      ctx.set('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Send the invoice content
+      ctx.body = invoiceText;
+
+    } catch (error) {
+      console.error('Error generating subscription invoice:', error);
+      return ctx.internalServerError('Failed to generate subscription invoice');
+    }
+  },
+
+
 
   // Cancel subscription
   async cancelSubscription(ctx) {
