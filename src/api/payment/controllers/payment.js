@@ -73,7 +73,7 @@ module.exports = {
   // Complete seller registration after payment
   async completeSellerRegistration(ctx) {
     try {
-      const { paymentId, orderId, signature, userId, vendorData, testMode = false } = ctx.request.body;
+      const { paymentId, orderId, signature, userId, vendorData, planId, testMode = false } = ctx.request.body;
 
       // Skip signature verification in test mode
       if (!testMode) {
@@ -122,7 +122,7 @@ module.exports = {
 
       console.log('✅ Updated user role to seller for user ID:', userId);
 
-      // Create vendor profile
+      // Create vendor profile with GST and bank information
       const vendor = await strapi.entityService.create('api::vendor.vendor', {
         data: {
           ...vendorData,
@@ -133,6 +133,13 @@ module.exports = {
           paymentStatus: 'paid',
           paymentId: paymentId,
           orderId: orderId,
+          // Include GST information if provided
+          gstNumber: vendorData.gstNumber || null,
+          // Include bank information if provided
+          bankAccountNumber: vendorData.bankAccountNumber || null,
+          ifscCode: vendorData.ifscCode || null,
+          bankAccountName: vendorData.bankAccountName || null,
+          bankAccountType: vendorData.bankAccountType || 'savings',
           // Handle business category if provided
           ...(vendorData.businessCategoryId && {
             businessCategory: vendorData.businessCategoryId
@@ -178,16 +185,61 @@ module.exports = {
         }
       }
 
+      // Create subscription if planId is provided
+      let subscription = null;
+      if (planId) {
+        try {
+          console.log('📋 Creating subscription for plan ID:', planId);
+          
+          // Get the plan details
+          const plan = await strapi.entityService.findOne('api::subscription-plan.subscription-plan', planId);
+          if (plan) {
+            // Calculate subscription dates
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + plan.duration);
+
+            // Create subscription
+            subscription = await strapi.entityService.create('api::subscription.subscription', {
+              data: {
+                vendor: vendor.id,
+                plan: planId,
+                status: 'active',
+                startDate: startDate,
+                endDate: endDate,
+                amount: plan.price,
+                currency: plan.currency || 'INR',
+                paymentId: paymentId,
+                orderId: orderId,
+                paymentMethod: 'razorpay',
+                features: plan.features,
+                autoRenew: false
+              },
+              populate: ['plan', 'vendor']
+            });
+
+            console.log('✅ Subscription created successfully:', subscription.id);
+          } else {
+            console.warn('⚠️ Plan not found for ID:', planId);
+          }
+        } catch (subscriptionError) {
+          console.error('❌ Error creating subscription:', subscriptionError);
+          console.warn('⚠️ Vendor created but subscription creation failed');
+        }
+      }
+
       console.log('✅ Seller registration completed successfully');
       console.log('   User ID:', userId);
       console.log('   Vendor ID:', vendor.id);
       console.log('   Payment ID:', paymentId);
+      console.log('   Subscription ID:', subscription?.id || 'None');
 
       return ctx.send({
         success: true,
         data: {
           user: { id: userId, role: 'seller' },
           vendor: vendor,
+          subscription: subscription,
           payment: {
             paymentId: paymentId,
             orderId: orderId,
