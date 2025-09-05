@@ -7,8 +7,46 @@ module.exports = createCoreService('api::subscription.subscription', ({ strapi }
    * Generate invoice data for a subscription
    */
   generateSubscriptionInvoiceData(subscription) {
-    const invoiceNumber = `SUB-INV-${subscription.id}-${Date.now().toString().slice(-6)}`;
+    const invoiceNumber = `INV-${subscription.id}-${Date.now().toString().slice(-4)}`;
     const invoiceDate = new Date().toISOString().split('T')[0];
+    
+    // Handle plan data properly - check multiple possible locations
+    let plan = subscription.plan || subscription.subscriptionPlan;
+    
+    // If plan is just an ID, we need to fetch the full plan data
+    if (plan && typeof plan === 'number') {
+      // For now, we'll use the subscription's own data
+      plan = null;
+    }
+    
+    // If no plan found, try to get data from subscription itself
+    if (!plan) {
+      plan = {
+        name: subscription.planName || 'Subscription Plan',
+        description: subscription.planDescription || '',
+        duration: subscription.planDuration || 30,
+        durationType: subscription.planDurationType || 'days',
+        price: subscription.amount || 0,
+        currency: subscription.currency || 'INR',
+        features: subscription.features || []
+      };
+    }
+    
+    const planFeatures = plan?.features || [];
+    
+    // Convert features to array if it's a string or object
+    let featuresArray = [];
+    if (Array.isArray(planFeatures)) {
+      featuresArray = planFeatures;
+    } else if (typeof planFeatures === 'string') {
+      try {
+        featuresArray = JSON.parse(planFeatures);
+      } catch {
+        featuresArray = [planFeatures];
+      }
+    } else if (planFeatures && typeof planFeatures === 'object') {
+      featuresArray = Object.values(planFeatures);
+    }
     
     return {
       invoiceNumber,
@@ -22,19 +60,19 @@ module.exports = createCoreService('api::subscription.subscription', ({ strapi }
       vendorCity: subscription.vendor?.city || '',
       vendorState: subscription.vendor?.state || '',
       vendorPincode: subscription.vendor?.pincode || '',
-      planName: subscription.plan?.name || 'Subscription Plan',
-      planDescription: subscription.plan?.description || '',
-      planDuration: subscription.plan?.duration || 0,
-      planDurationType: subscription.plan?.durationType || 'days',
+      planName: plan?.name || 'Subscription Plan',
+      planDescription: plan?.description || '',
+      planDuration: plan?.duration || 30, // Default to 30 days
+      planDurationType: plan?.durationType || 'days',
       startDate: new Date(subscription.startDate).toISOString().split('T')[0],
       endDate: new Date(subscription.endDate).toISOString().split('T')[0],
-      amount: subscription.amount,
-      currency: subscription.currency || 'INR',
-      paymentId: subscription.paymentId,
-      orderId: subscription.orderId,
+      amount: subscription.amount || plan?.price || 0,
+      currency: subscription.currency || plan?.currency || 'INR',
+      paymentId: subscription.paymentId || '',
+      orderId: subscription.orderId || '',
       paymentMethod: subscription.paymentMethod || 'razorpay',
       status: subscription.status,
-      features: subscription.features || [],
+      features: featuresArray,
       autoRenew: subscription.autoRenew || false,
     };
   },

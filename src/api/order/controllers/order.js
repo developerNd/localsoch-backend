@@ -590,9 +590,30 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
     console.log('🛒 Creating new order with data:', JSON.stringify(data, null, 2));
 
-    // Calculate delivery charge (default to 50 if not provided)
-    // const deliveryCharge = data.deliveryCharge || 50;
-    const deliveryCharge = 0; // Temporarily disabled delivery fees
+    // Calculate delivery charge based on vendor settings
+    let deliveryCharge = 0;
+    if (data.deliveryType !== 'pickup' && data.vendor) {
+      try {
+        // Get vendor delivery fees configuration
+        const vendor = await strapi.entityService.findOne('api::vendor.vendor', data.vendor, {
+          populate: ['deliveryFees']
+        });
+        
+        if (vendor?.deliveryFees?.isDeliveryAvailable) {
+          const deliveryConfig = vendor.deliveryFees;
+          deliveryCharge = parseFloat(deliveryConfig.baseDeliveryFee) || 0;
+          
+          // Check if order value meets free delivery threshold
+          if (deliveryConfig.freeDeliveryThreshold && 
+              subtotal >= parseFloat(deliveryConfig.freeDeliveryThreshold)) {
+            deliveryCharge = 0;
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Error calculating delivery fees, using default:', error.message);
+        deliveryCharge = 0;
+      }
+    }
     
     // Calculate subtotal from order items
     let subtotal = 0;

@@ -6,7 +6,10 @@
  * 
  * Usage:
  * - Manual: node scripts/check-expired-offers.js
- * - Cron: Add to crontab to run every hour: 0 * * * * cd /path/to/cityshopping-backend && node scripts/check-expired-offers.js
+ * - Cron: Add to crontab to run daily at 12:05 AM: 5 0 * * * cd /path/to/cityshopping-backend && node scripts/check-expired-offers.js
+ * 
+ * Note: Since offers expire at midnight, running this daily at 12:05 AM is sufficient.
+ * The backend also has a built-in scheduled job that runs daily at 12:05 AM.
  */
 
 const { execSync } = require('child_process');

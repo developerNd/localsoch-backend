@@ -17,8 +17,7 @@ module.exports = {
       order.orderItems.reduce((sum, item) => sum + (parseFloat(item.totalAmount) || 0), 0) : 
       (order.totalAmount - (order.deliveryCharge || 0));
     
-    // const deliveryCharge = order.deliveryCharge || 0;
-    const deliveryCharge = 0; // Temporarily disabled delivery fees
+    const deliveryCharge = order.deliveryCharge || 0;
     const tax = 0; // Currently set to 0
     const total = subtotal + deliveryCharge + tax;
     

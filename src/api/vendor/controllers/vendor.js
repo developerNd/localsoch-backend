@@ -132,29 +132,48 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       delete ctx.query.filters.location;
     }
     
-    // Always ensure businessCategory and products are populated
-    if (ctx.query.populate === '*' || ctx.query.populate?.includes('*')) {
-      // For populate=*, we need to preserve all fields and add businessCategory
-      ctx.query.populate = '*';
-      // We'll handle businessCategory population in the response
-    } else if (ctx.query.populate) {
-      // If specific populate is requested, add businessCategory and products if not present
-      const populateArray = Array.isArray(ctx.query.populate) ? ctx.query.populate : ctx.query.populate.split(',');
-      if (!populateArray.includes('businessCategory')) {
-        populateArray.push('businessCategory');
-      }
-      if (!populateArray.includes('products')) {
-        populateArray.push('products');
-      }
-      ctx.query.populate = populateArray;
-    } else {
-      // If no populate specified, add businessCategory and products
-      ctx.query.populate = ['businessCategory', 'products'];
-    }
+    // Always deep-populate needed relations/components for vendor listing
+    ctx.query.populate = {
+      user: true,
+      profileImage: true,
+      businessCategory: true,
+      products: true,
+      shopHours: {
+        populate: {
+          monday: true,
+          tuesday: true,
+          wednesday: true,
+          thursday: true,
+          friday: true,
+          saturday: true,
+          sunday: true,
+        },
+      },
+      deliveryFees: {
+        populate: {
+          distanceBasedFees: true,
+          orderValueBasedFees: true,
+        },
+      },
+    };
     
     console.log('🔍 VENDOR CONTROLLER: Final query before super.find:', ctx.query);
     
-    const { data, meta } = await super.find(ctx);
+    // Call the default find method (now with deep population)
+    let data, meta;
+    try {
+      const response = await super.find(ctx);
+      data = response.data;
+      meta = response.meta;
+    } catch (error) {
+      console.error('❌ Error in super.find, falling back to basic population:', error.message);
+      
+      // Fallback to basic population without deep nesting
+      ctx.query.populate = ['user', 'profileImage', 'businessCategory', 'products'];
+      const fallbackResponse = await super.find(ctx);
+      data = fallbackResponse.data;
+      meta = fallbackResponse.meta;
+    }
     
     // Manually populate businessCategory if it's not already populated
     if (data && data.length > 0) {
@@ -410,7 +429,17 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         'profileImage',
         'products',
         'products.image',
-        'products.category'
+        'products.category',
+        {
+          shopHours: {
+            populate: '*'
+          }
+        },
+        {
+          deliveryFees: {
+            populate: '*'
+          }
+        }
       ]
     });
 
@@ -1386,9 +1415,31 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
       const { id } = ctx.params;
       console.log('🔍 VENDOR CONTROLLER: findOne called for vendor ID:', id);
 
-      // Get vendor with populated data
+      // Get vendor with populated data including nested components
       const vendor = await strapi.entityService.findOne('api::vendor.vendor', id, {
-        populate: ['user', 'products', 'profileImage', 'businessCategory']
+        populate: {
+          user: true,
+          products: true,
+          profileImage: true,
+          businessCategory: true,
+          shopHours: {
+            populate: {
+              monday: true,
+              tuesday: true,
+              wednesday: true,
+              thursday: true,
+              friday: true,
+              saturday: true,
+              sunday: true
+            }
+          },
+          deliveryFees: {
+            populate: {
+              distanceBasedFees: true,
+              orderValueBasedFees: true
+            }
+          }
+        }
       });
 
       if (!vendor) {
@@ -1494,9 +1545,31 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         return ctx.forbidden('Admin access required');
       }
 
-      // Get all vendors with user and product data
+      // Get all vendors with user and product data including nested components
       const vendors = await strapi.entityService.findMany('api::vendor.vendor', {
-        populate: ['user', 'products', 'profileImage', 'businessCategory']
+        populate: {
+          user: true,
+          products: true,
+          profileImage: true,
+          businessCategory: true,
+          shopHours: {
+            populate: {
+              monday: true,
+              tuesday: true,
+              wednesday: true,
+              thursday: true,
+              friday: true,
+              saturday: true,
+              sunday: true
+            }
+          },
+          deliveryFees: {
+            populate: {
+              distanceBasedFees: true,
+              orderValueBasedFees: true
+            }
+          }
+        }
       });
 
       console.log('📊 Found vendors:', vendors.length);
@@ -1556,6 +1629,88 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
     } catch (error) {
       console.error('Error deleting vendor:', error);
       return ctx.internalServerError('Failed to delete vendor');
+    }
+  },
+
+  // Calculate delivery fees for a vendor
+  async calculateDeliveryFees(ctx) {
+    try {
+      const { vendorId, orderValue, distance } = ctx.request.body;
+      
+      if (!vendorId) {
+        return ctx.badRequest('Vendor ID is required');
+      }
+
+      // Get vendor with delivery fees configuration
+      const vendor = await strapi.entityService.findOne('api::vendor.vendor', vendorId, {
+        populate: ['deliveryFees']
+      });
+
+      if (!vendor) {
+        return ctx.notFound('Vendor not found');
+      }
+
+      if (!vendor.deliveryFees || !vendor.deliveryFees.isDeliveryAvailable) {
+        return ctx.send({
+          success: true,
+          data: {
+            deliveryFee: 0,
+            freeDeliveryThreshold: 0,
+            deliveryAvailable: false,
+            message: 'Delivery not available for this vendor'
+          }
+        });
+      }
+
+      const deliveryConfig = vendor.deliveryFees;
+      let deliveryFee = parseFloat(deliveryConfig.baseDeliveryFee) || 0;
+
+      // Check if order value meets free delivery threshold
+      if (orderValue && deliveryConfig.freeDeliveryThreshold && 
+          parseFloat(orderValue) >= parseFloat(deliveryConfig.freeDeliveryThreshold)) {
+        deliveryFee = 0;
+      }
+
+      // Apply distance-based fees if distance is provided
+      if (distance && deliveryConfig.distanceBasedFees && deliveryConfig.distanceBasedFees.length > 0) {
+        const distanceFee = deliveryConfig.distanceBasedFees.find(fee => {
+          const minDist = parseFloat(fee.minDistance) || 0;
+          const maxDist = parseFloat(fee.maxDistance) || Infinity;
+          return distance >= minDist && distance <= maxDist;
+        });
+        
+        if (distanceFee) {
+          deliveryFee = parseFloat(distanceFee.fee) || deliveryFee;
+        }
+      }
+
+      // Apply order value-based fees if order value is provided
+      if (orderValue && deliveryConfig.orderValueBasedFees && deliveryConfig.orderValueBasedFees.length > 0) {
+        const orderValueFee = deliveryConfig.orderValueBasedFees.find(fee => {
+          const minValue = parseFloat(fee.minOrderValue) || 0;
+          const maxValue = parseFloat(fee.maxOrderValue) || Infinity;
+          return parseFloat(orderValue) >= minValue && parseFloat(orderValue) <= maxValue;
+        });
+        
+        if (orderValueFee) {
+          deliveryFee = parseFloat(orderValueFee.fee) || deliveryFee;
+        }
+      }
+
+      return ctx.send({
+        success: true,
+        data: {
+          deliveryFee: deliveryFee.toFixed(2),
+          freeDeliveryThreshold: deliveryConfig.freeDeliveryThreshold || '0.00',
+          deliveryAvailable: true,
+          deliveryRadius: deliveryConfig.deliveryRadius || '10.00',
+          deliveryTime: deliveryConfig.deliveryTime || '1-2 hours',
+          message: deliveryFee === 0 ? 'Free delivery!' : `Delivery fee: ₹${deliveryFee.toFixed(2)}`
+        }
+      });
+    } catch (error) {
+      console.error('Error calculating delivery fees:', error);
+      return ctx.internalServerError('Failed to calculate delivery fees');
     }
   }
 })); 

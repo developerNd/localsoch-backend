@@ -100,6 +100,17 @@ const myExtraRoutes = [
       middlewares: [],
     },
   },
+  // Delivery fees calculation endpoint
+  {
+    method: 'POST',
+    path: '/vendors/calculate-delivery-fees',
+    handler: 'vendor.calculateDeliveryFees',
+    config: {
+      auth: false,
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];
 
 module.exports = customRouter(defaultRouter, myExtraRoutes); 

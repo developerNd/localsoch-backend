@@ -12,27 +12,38 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
         return ctx.badRequest('Vendor ID is required');
       }
 
-      const subscription = await strapi.entityService.findMany('api::subscription.subscription', {
-        filters: {
+      // Try using the query builder for better population control
+      const subscription = await strapi.db.query('api::subscription.subscription').findMany({
+        where: {
           vendor: vendorId,
           status: 'active'
         },
         populate: {
-          plan: {
-            populate: ['*']
-          },
-          vendor: {
-            populate: ['*']
-          }
+          plan: true,
+          vendor: true
         },
-        sort: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         limit: 1
       });
 
       if (subscription && subscription.length > 0) {
+        const subscriptionData = subscription[0];
+        
+        // If plan is not populated, try to fetch it separately
+        if (subscriptionData.plan && typeof subscriptionData.plan === 'number') {
+          try {
+            const planData = await strapi.entityService.findOne('api::subscription-plan.subscription-plan', subscriptionData.plan, {
+              populate: ['*']
+            });
+            subscriptionData.plan = planData;
+          } catch (error) {
+            console.error('Error fetching plan data:', error);
+          }
+        }
+        
         return ctx.send({
           success: true,
-          data: subscription[0]
+          data: subscriptionData
         });
       }
 

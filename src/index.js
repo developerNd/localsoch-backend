@@ -31,6 +31,23 @@ module.exports = {
       } else {
         strapi.log.warn('⚠️ Firebase Admin SDK not initialized - check environment variables');
       }
+
+      // Set up scheduled job to check expired offers daily at 12:05 AM
+      const schedule = require('node-schedule');
+      
+      // Run daily at 12:05 AM (5 minutes after midnight to ensure all offers have expired)
+      schedule.scheduleJob('5 0 * * *', async () => {
+        try {
+          strapi.log.info('🕐 Running daily expired offers cleanup at 12:05 AM...');
+          const result = await strapi.service('api::product.product').checkExpiredOffers();
+          strapi.log.info(`✅ Daily expired offers cleanup completed: ${result.updatedCount} products updated`);
+        } catch (error) {
+          strapi.log.error('❌ Error in daily expired offers cleanup:', error);
+        }
+      });
+      
+      strapi.log.info('⏰ Scheduled job for expired offers cleanup initialized (runs daily at 12:05 AM)');
+      
     } catch (err) {
       strapi.log.error('❌ Failed to initialize services in bootstrap:', err);
     }

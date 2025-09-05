@@ -77,47 +77,10 @@ module.exports = {
   },
 
   async afterFindOne(event) {
-    if (event.result) {
-      // Check if this product has an expired offer and update it
-      if (event.result.isOfferActive && event.result.offerEndDate) {
-        const now = new Date();
-        const offerEndDate = new Date(event.result.offerEndDate);
-        
-        if (offerEndDate < now) {
-          try {
-            const productService = strapi.service('api::product.product');
-            if (productService && productService.checkExpiredOffers) {
-              await productService.checkExpiredOffers();
-            }
-          } catch (error) {
-            console.error(`   ❌ Error checking expired offers:`, error);
-          }
-        }
-      }
-    }
+    // No automatic expired offers checking - handled by scheduled job instead
   },
 
   async afterFindMany(event) {
-    if (event.result && Array.isArray(event.result)) {
-      
-      // Check if any products have expired offers
-      const now = new Date();
-      const productsWithExpiredOffers = event.result.filter(product => 
-        product.isOfferActive && 
-        product.offerEndDate && 
-        new Date(product.offerEndDate) < now
-      );
-      
-      if (productsWithExpiredOffers.length > 0) {
-        try {
-          const productService = strapi.service('api::product.product');
-          if (productService && productService.checkExpiredOffers) {
-            await productService.checkExpiredOffers();
-          }
-        } catch (error) {
-          console.error('❌ Error checking expired offers in afterFindMany:', error);
-        }
-      }
-    }
+    // No automatic expired offers checking - handled by scheduled job instead
   }
 }; 
