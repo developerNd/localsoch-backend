@@ -4,6 +4,17 @@ module.exports = {
     if (event.params.data.discount && event.params.data.discount > 0) {
       event.params.data.originalPrice = event.params.data.price;
       event.params.data.isOfferActive = true;
+      
+      // Set default offer dates if not provided
+      if (!event.params.data.offerStartDate) {
+        event.params.data.offerStartDate = new Date();
+      }
+      
+      if (!event.params.data.offerEndDate) {
+        const defaultEndDate = new Date();
+        defaultEndDate.setDate(defaultEndDate.getDate() + 10);
+        event.params.data.offerEndDate = defaultEndDate;
+      }
     }
   },
 
@@ -53,7 +64,7 @@ module.exports = {
       
       if (!event.params.data.offerEndDate) {
         const defaultEndDate = new Date();
-        defaultEndDate.setDate(defaultEndDate.getDate() + 7);
+        defaultEndDate.setDate(defaultEndDate.getDate() + 10);
         event.params.data.offerEndDate = defaultEndDate;
       }
     }
