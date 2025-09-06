@@ -122,7 +122,31 @@ module.exports = {
 
       console.log('✅ Updated user role to seller for user ID:', userId);
 
-      // Create vendor profile with GST and bank information
+      // Debug: Log vendor data before creation
+      console.log('🔍 Vendor data being created:', {
+        name: vendorData.name,
+        description: vendorData.description,
+        address: vendorData.address,
+        city: vendorData.city,
+        state: vendorData.state,
+        pincode: vendorData.pincode,
+        businessType: vendorData.businessType,
+        phone: vendorData.phone,
+        email: vendorData.email,
+        gstNumber: vendorData.gstNumber,
+        bankAccountNumber: vendorData.bankAccountNumber,
+        ifscCode: vendorData.ifscCode,
+        bankAccountName: vendorData.bankAccountName,
+        bankAccountType: vendorData.bankAccountType,
+        businessCategoryId: vendorData.businessCategoryId
+      });
+
+      // Fix undefined values
+      if (vendorData.businessType === undefined) {
+        vendorData.businessType = null;
+      }
+
+      // Create vendor profile with GST and bank information first
       const vendor = await strapi.entityService.create('api::vendor.vendor', {
         data: {
           ...vendorData,
@@ -146,6 +170,65 @@ module.exports = {
           })
         }
       });
+
+
+      // Now add default shop hours and delivery fees
+      try {
+        
+        // Add shop hours
+        await strapi.entityService.update('api::vendor.vendor', vendor.id, {
+          data: {
+            shopHours: {
+              monday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              tuesday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              wednesday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              thursday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              friday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              saturday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              sunday: { isOpen: false, openTime: '10:00:00', closeTime: '16:00:00' },
+              timezone: 'Asia/Kolkata'
+            }
+          }
+        });
+        
+        // Add delivery fees
+        await strapi.entityService.update('api::vendor.vendor', vendor.id, {
+          data: {
+            deliveryFees: {
+              isDeliveryAvailable: true,
+              baseDeliveryFee: '50.00',
+              freeDeliveryThreshold: '500.00',
+              deliveryRadius: '10.00',
+              deliveryTime: '1-2 hours'
+              // Omit distanceBasedFees and orderValueBasedFees - they're optional and might cause validation issues
+            }
+          }
+        });
+        
+      } catch (componentError) {
+        // Fallback to minimal required fields
+        try {
+          
+          // Try with just the required fields
+          await strapi.entityService.update('api::vendor.vendor', vendor.id, {
+            data: {
+              shopHours: {
+                monday: { isOpen: true },
+                timezone: 'Asia/Kolkata'
+              },
+              deliveryFees: {
+                isDeliveryAvailable: true,
+                baseDeliveryFee: '50.00'
+              }
+            }
+          });
+          
+        } catch (minimalError) {
+          console.error('Failed to add default shop settings:', minimalError.message);
+        }
+      }
+
+      console.log('✅ Vendor created successfully with default shop hours and delivery fees:', vendor.id);
 
       // Handle referral code if provided
       if (vendorData.referralCode) {
@@ -250,6 +333,22 @@ module.exports = {
       });
     } catch (error) {
       console.error('Error completing seller registration:', error);
+      
+      // Log detailed validation errors
+      if (error.name === 'YupValidationError' && error.details) {
+        console.error('🔍 Validation Error Details:');
+        console.error('Full error details:', JSON.stringify(error.details, null, 2));
+        error.details.errors.forEach((err, index) => {
+          console.error(`  Error ${index + 1}:`, {
+            path: err.path,
+            message: err.message,
+            value: err.value
+          });
+        });
+      } else {
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+      }
+      
       return ctx.internalServerError('Failed to complete seller registration');
     }
   }

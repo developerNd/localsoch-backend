@@ -661,7 +661,7 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
         }
       });
 
-      // Create vendor profile
+      // Create vendor profile first
       const vendor = await strapi.entityService.create('api::vendor.vendor', {
         data: {
           ...vendorData,
@@ -670,6 +670,35 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
           isApproved: true
         }
       });
+
+      // Add default shop hours and delivery fees
+      try {
+        await strapi.entityService.update('api::vendor.vendor', vendor.id, {
+          data: {
+            shopHours: {
+              monday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              tuesday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              wednesday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              thursday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              friday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              saturday: { isOpen: true, openTime: '09:00:00', closeTime: '18:00:00' },
+              sunday: { isOpen: false, openTime: '10:00:00', closeTime: '16:00:00' },
+              timezone: 'Asia/Kolkata'
+            },
+            deliveryFees: {
+              isDeliveryAvailable: true,
+              baseDeliveryFee: '50.00',
+              freeDeliveryThreshold: '500.00',
+              deliveryRadius: '10.00',
+              deliveryTime: '1-2 hours'
+              // Omit distanceBasedFees and orderValueBasedFees - they're optional and might cause validation issues
+            }
+          }
+        });
+      } catch (componentError) {
+        console.error('Failed to add default shop settings:', componentError.message);
+        // Don't fail the entire registration if components fail
+      }
 
       // Send notification to admin about new seller registration and payment
       try {
