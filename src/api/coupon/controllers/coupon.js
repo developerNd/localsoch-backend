@@ -13,13 +13,19 @@ module.exports = createCoreController('api::coupon.coupon', ({ strapi }) => ({
     try {
       const { couponCode, orderAmount, userId } = ctx.request.body;
       
+      
       if (!couponCode || !orderAmount) {
         return ctx.badRequest('Coupon code and order amount are required');
       }
 
+      // Check if it's the static referral coupon first
+      let isStaticCoupon = false;
+      if (couponCode === 'REF1234567890ABCD') {
+        isStaticCoupon = true;
+      }
+
       // Check for coupons in database
       let coupon = [];
-      let isStaticCoupon = false;
       
       // Check coupons in database
       coupon = await strapi.entityService.findMany('api::coupon.coupon', {
@@ -30,13 +36,7 @@ module.exports = createCoreController('api::coupon.coupon', ({ strapi }) => ({
         populate: ['usedBy']
       });
 
-      // Check if it's the static coupon
-      if (coupon.length > 0 && couponCode === 'REF1234567890ABCD') {
-        isStaticCoupon = true;
-      }
-
       if (coupon.length === 0) {
-
         return ctx.send({
           success: false,
           message: 'Invalid coupon code. Please check the code and try again.'
@@ -76,10 +76,14 @@ module.exports = createCoreController('api::coupon.coupon', ({ strapi }) => ({
         
         if (isStaticCoupon) {
           // For static coupons, check the simple boolean field in user table
-          const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId, {
-            fields: ['hasUsedStaticCoupon']
-          });
-          hasUsed = user?.hasUsedStaticCoupon || false;
+          try {
+            const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId, {
+              fields: ['hasUsedStaticCoupon']
+            });
+            hasUsed = user?.hasUsedStaticCoupon || false;
+          } catch (userError) {
+            hasUsed = false; // If we can't fetch user data, assume they haven't used it
+          }
         } else {
           // For regular coupons, check the usedBy relation
           if (couponData.usedBy) {
@@ -121,11 +125,15 @@ module.exports = createCoreController('api::coupon.coupon', ({ strapi }) => ({
         try {
           if (isStaticCoupon) {
             // For static coupons, update the user's hasUsedStaticCoupon field
-            await strapi.entityService.update('plugin::users-permissions.user', userId, {
-              data: {
-                hasUsedStaticCoupon: true
-              }
-            });
+            try {
+              await strapi.entityService.update('plugin::users-permissions.user', userId, {
+                data: {
+                  hasUsedStaticCoupon: true
+                }
+              });
+            } catch (updateError) {
+              // Continue anyway - don't fail the coupon validation
+            }
           } else {
             // For regular coupons, update the coupon's usedBy relation and usedCount
             let currentUsedBy = couponData.usedBy || [];
