@@ -75,7 +75,25 @@ module.exports = createCoreController('api::subscription.subscription', ({ strap
       // Calculate subscription dates
       const startDate = new Date();
       const endDate = new Date();
-      endDate.setDate(endDate.getDate() + plan.duration);
+      
+      // Handle different duration types
+      switch (plan.durationType) {
+        case 'days':
+          endDate.setDate(endDate.getDate() + plan.duration);
+          break;
+        case 'weeks':
+          endDate.setDate(endDate.getDate() + (plan.duration * 7));
+          break;
+        case 'months':
+          endDate.setMonth(endDate.getMonth() + plan.duration);
+          break;
+        case 'years':
+          endDate.setFullYear(endDate.getFullYear() + plan.duration);
+          break;
+        default:
+          // Default to days if durationType is not specified
+          endDate.setDate(endDate.getDate() + plan.duration);
+      }
 
       // Create subscription
       const subscription = await strapi.entityService.create('api::subscription.subscription', {

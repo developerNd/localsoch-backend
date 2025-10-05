@@ -138,7 +138,12 @@ module.exports = {
         ifscCode: vendorData.ifscCode,
         bankAccountName: vendorData.bankAccountName,
         bankAccountType: vendorData.bankAccountType,
-        businessCategoryId: vendorData.businessCategoryId
+        businessCategoryId: vendorData.businessCategoryId,
+        // GPS location data
+        latitude: vendorData.latitude,
+        longitude: vendorData.longitude,
+        locationAccuracy: vendorData.locationAccuracy,
+        gpsAddress: vendorData.gpsAddress
       });
 
       // Fix undefined values
@@ -164,6 +169,11 @@ module.exports = {
           ifscCode: vendorData.ifscCode || null,
           bankAccountName: vendorData.bankAccountName || null,
           bankAccountType: vendorData.bankAccountType || 'savings',
+          // Include GPS location data if provided
+          latitude: vendorData.latitude || null,
+          longitude: vendorData.longitude || null,
+          locationAccuracy: vendorData.locationAccuracy || null,
+          gpsAddress: vendorData.gpsAddress || null,
           // Handle business category if provided
           ...(vendorData.businessCategoryId && {
             businessCategory: vendorData.businessCategoryId
@@ -280,7 +290,25 @@ module.exports = {
             // Calculate subscription dates
             const startDate = new Date();
             const endDate = new Date();
-            endDate.setDate(endDate.getDate() + plan.duration);
+            
+            // Handle different duration types
+            switch (plan.durationType) {
+              case 'days':
+                endDate.setDate(endDate.getDate() + plan.duration);
+                break;
+              case 'weeks':
+                endDate.setDate(endDate.getDate() + (plan.duration * 7));
+                break;
+              case 'months':
+                endDate.setMonth(endDate.getMonth() + plan.duration);
+                break;
+              case 'years':
+                endDate.setFullYear(endDate.getFullYear() + plan.duration);
+                break;
+              default:
+                // Default to days if durationType is not specified
+                endDate.setDate(endDate.getDate() + plan.duration);
+            }
 
             // Create subscription
             subscription = await strapi.entityService.create('api::subscription.subscription', {

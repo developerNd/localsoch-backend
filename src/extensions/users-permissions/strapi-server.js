@@ -201,6 +201,89 @@ module.exports = (plugin) => {
 
   // Add custom password change method to the existing auth controller
   if (plugin.controllers.auth) {
+    // Add custom forgot password method
+    plugin.controllers.auth.forgotPassword = async (ctx) => {
+      console.log('🎯🎯🎯 CUSTOM AUTH CONTROLLER: forgotPassword method called! 🎯🎯🎯');
+      
+      try {
+        const { email } = ctx.request.body;
+        
+        if (!email) {
+          return ctx.badRequest('Email is required');
+        }
+        
+        // Simple test - just return success for now
+        return {
+          message: 'Test: OTP sent successfully to your email address.',
+          email: email
+        };
+        
+      } catch (error) {
+        console.error('❌ Error in forgot password:', error);
+        return ctx.internalServerError('Failed to process password reset request');
+      }
+    };
+
+    // Add custom reset password method
+    plugin.controllers.auth.resetPassword = async (ctx) => {
+      try {
+        console.log('🎯 CUSTOM AUTH CONTROLLER: resetPassword method called!');
+        console.log('🔍 Request body:', ctx.request.body);
+        
+        const { code, password, passwordConfirmation } = ctx.request.body;
+        
+        if (!code || !password || !passwordConfirmation) {
+          return ctx.badRequest('OTP, password, and password confirmation are required');
+        }
+        
+        if (password !== passwordConfirmation) {
+          return ctx.badRequest('Passwords do not match');
+        }
+        
+        if (password.length < 6) {
+          return ctx.badRequest('Password must be at least 6 characters long');
+        }
+        
+        // Find user by OTP
+        const user = await strapi.entityService.findMany('plugin::users-permissions.user', {
+          filters: { resetPasswordToken: code },
+          populate: ['role']
+        });
+        
+        const targetUser = user[0];
+        
+        if (!targetUser) {
+          return ctx.badRequest('Invalid or expired OTP');
+        }
+        
+        console.log('✅ User found with OTP:', { id: targetUser.id, email: targetUser.email });
+        
+        // Hash new password
+        const hashedPassword = await strapi.plugins['users-permissions'].services.user.hashPassword({
+          password: password
+        });
+        
+        // Update user with new password and clear OTP
+        await strapi.entityService.update('plugin::users-permissions.user', targetUser.id, {
+          data: {
+            password: hashedPassword,
+            resetPasswordToken: null
+          }
+        });
+        
+        console.log('✅ Password reset successfully for user:', targetUser.email);
+        
+        // Return success message
+        return {
+          message: 'Password reset successfully'
+        };
+        
+      } catch (error) {
+        console.error('❌ Error in reset password:', error);
+        return ctx.internalServerError('Failed to reset password');
+      }
+    };
+
     plugin.controllers.auth.changePassword = async (ctx) => {
       try {
         console.log('🎯 CUSTOM AUTH CONTROLLER: changePassword method called!');
@@ -285,17 +368,35 @@ module.exports = (plugin) => {
     };
   }
 
-  // Add custom route for password change
-  plugin.routes['content-api'].routes.push({
-    method: 'POST',
-    path: '/auth/change-password',
-    handler: 'auth.changePassword',
-    config: {
-      auth: {
-        scope: ['authenticated']
+  // Add custom routes for password management
+  plugin.routes['content-api'].routes.push(
+    {
+      method: 'POST',
+      path: '/auth/forgot-password',
+      handler: 'auth.forgotPassword',
+      config: {
+        auth: false // Public endpoint
+      }
+    },
+    {
+      method: 'POST',
+      path: '/auth/reset-password',
+      handler: 'auth.resetPassword',
+      config: {
+        auth: false // Public endpoint
+      }
+    },
+    {
+      method: 'POST',
+      path: '/auth/change-password',
+      handler: 'auth.changePassword',
+      config: {
+        auth: {
+          scope: ['authenticated']
+        }
       }
     }
-  });
+  );
 
 
 

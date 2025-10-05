@@ -667,7 +667,22 @@ module.exports = createCoreController('api::vendor.vendor', ({ strapi }) => ({
           ...vendorData,
           user: userId,
           isActive: true,
-          isApproved: true
+          isApproved: true,
+          // Include GPS coordinates if provided
+          latitude: vendorData.latitude,
+          longitude: vendorData.longitude,
+          locationAccuracy: vendorData.locationAccuracy,
+          gpsAddress: vendorData.gpsAddress,
+          // Set default rating and review count
+          rating: 0,
+          reviewCount: 0,
+          isOpen: true,
+          openingHours: '9:00 AM - 6:00 PM',
+          // Additional fields for nearby sellers feature
+          serviceRadius: vendorData.serviceRadius || 10.0,
+          isOnline: true,
+          lastActiveAt: new Date(),
+          locationUpdatedAt: new Date()
         }
       });
 

@@ -141,6 +141,57 @@
       "type": "component",
       "component": "vendor.delivery-fees",
       "required": false
+    },
+    "latitude": {
+      "type": "decimal",
+      "min": -90,
+      "max": 90
+    },
+    "longitude": {
+      "type": "decimal",
+      "min": -180,
+      "max": 180
+    },
+    "locationAccuracy": {
+      "type": "decimal",
+      "min": 0
+    },
+    "gpsAddress": {
+      "type": "text"
+    },
+    "rating": {
+      "type": "decimal",
+      "min": 0,
+      "max": 5,
+      "default": 0
+    },
+    "reviewCount": {
+      "type": "integer",
+      "min": 0,
+      "default": 0
+    },
+    "isOpen": {
+      "type": "boolean",
+      "default": true
+    },
+    "openingHours": {
+      "type": "string"
+    },
+    "serviceRadius": {
+      "type": "decimal",
+      "min": 0,
+      "default": 10.0,
+      "required": false
+    },
+    "isOnline": {
+      "type": "boolean",
+      "default": true
+    },
+    "lastActiveAt": {
+      "type": "datetime"
+    },
+    "locationUpdatedAt": {
+      "type": "datetime"
     }
   }
 }
