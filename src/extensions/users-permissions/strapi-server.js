@@ -61,7 +61,7 @@ module.exports = (plugin) => {
             });
             
             // Upload the file using Strapi's upload service
-            const uploadedFile = await strapi.plugins.upload.services.upload.upload({
+            const uploadedFile = await global.strapi.plugins.upload.services.upload.upload({
               data: {},
               files: file
             });
@@ -82,7 +82,7 @@ module.exports = (plugin) => {
         // Update the user
         console.log('🔄 Strapi entityService.update called with data:', updateData);
         
-        const updatedUser = await strapi.entityService.update('plugin::users-permissions.user', id, {
+        const updatedUser = await global.strapi.entityService.update('plugin::users-permissions.user', id, {
           data: updateData,
           populate: ['role', 'profileImage']
         });
@@ -155,7 +155,7 @@ module.exports = (plugin) => {
         // Get the full user data with populated fields
         console.log('🔄 Fetching user data for ID:', user.id);
         
-        const fullUser = await strapi.entityService.findOne('plugin::users-permissions.user', user.id, {
+        const fullUser = await global.strapi.entityService.findOne('plugin::users-permissions.user', user.id, {
           populate: ['role', 'profileImage']
         });
         
@@ -216,14 +216,11 @@ module.exports = (plugin) => {
   if (plugin.controllers.auth) {
     // Add custom forgot password method
     plugin.controllers.auth.forgotPassword = async (ctx) => {
-      console.log('🎯🎯🎯 CUSTOM AUTH CONTROLLER: forgotPassword method called! 🎯🎯🎯');
-      
       try {
         const { email } = ctx.request.body;
         
         // Validate email input
         if (!email) {
-          console.log('❌ Missing email in request');
           return ctx.badRequest({
             error: 'Email is required',
             message: 'Please provide a valid email address'
@@ -233,14 +230,11 @@ module.exports = (plugin) => {
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-          console.log('❌ Invalid email format:', email);
           return ctx.badRequest({
             error: 'Invalid email format',
             message: 'Please provide a valid email address'
           });
         }
-        
-        console.log('📧 Processing forgot password for email:', email);
         
         // Check if email service is configured
         const emailServiceType = process.env.EMAIL_SERVICE || 'gmail';
@@ -264,7 +258,6 @@ module.exports = (plugin) => {
         }
         
         if (!emailConfigured) {
-          console.error('❌ Email service not configured for service:', emailServiceType);
           return ctx.serviceUnavailable({
             error: 'Email service unavailable',
             message: 'Password reset service is temporarily unavailable. Please try again later or contact support.'
@@ -274,14 +267,13 @@ module.exports = (plugin) => {
         // Find user by email
         let user;
         try {
-          const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+          const users = await global.strapi.entityService.findMany('plugin::users-permissions.user', {
             filters: { email: email.toLowerCase().trim() },
             populate: ['role']
           });
           
           user = users[0];
         } catch (dbError) {
-          console.error('❌ Database error finding user:', dbError);
           return ctx.internalServerError({
             error: 'Database error',
             message: 'Unable to process request. Please try again later.'
@@ -289,7 +281,6 @@ module.exports = (plugin) => {
         }
         
         if (!user) {
-          console.log('❌ User not found with email:', email);
           // Return success message even if user doesn't exist (security best practice)
           return {
             message: 'If an account exists with this email, you will receive a password reset code.',
@@ -297,22 +288,17 @@ module.exports = (plugin) => {
           };
         }
         
-        console.log('✅ User found:', { id: user.id, email: user.email });
-        
         // Generate OTP (6-digit code)
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        console.log('🔐 Generated OTP for user:', user.email);
         
         // Update user with OTP
         try {
-          await strapi.entityService.update('plugin::users-permissions.user', user.id, {
+          await global.strapi.entityService.update('plugin::users-permissions.user', user.id, {
             data: {
               resetPasswordToken: otp
             }
           });
-          console.log('✅ OTP saved to user record');
         } catch (updateError) {
-          console.error('❌ Error updating user with OTP:', updateError);
           return ctx.internalServerError({
             error: 'Database update error',
             message: 'Unable to process password reset. Please try again later.'
@@ -324,7 +310,6 @@ module.exports = (plugin) => {
         try {
           emailServiceModule = require('../../services/email');
         } catch (importError) {
-          console.error('❌ Error importing email service:', importError);
           return ctx.internalServerError({
             error: 'Service unavailable',
             message: 'Email service is temporarily unavailable. Please try again later.'
@@ -332,12 +317,10 @@ module.exports = (plugin) => {
         }
         
         // Send OTP email
-        console.log('📧 Sending OTP email...');
         let emailResult;
         try {
           emailResult = await emailServiceModule.sendPasswordResetOTP(email, otp);
         } catch (emailError) {
-          console.error('❌ Error sending email:', emailError);
           return ctx.serviceUnavailable({
             error: 'Email delivery failed',
             message: 'Unable to send reset email. Please try again later or contact support.'
@@ -345,14 +328,11 @@ module.exports = (plugin) => {
         }
         
         if (!emailResult || !emailResult.success) {
-          console.error('❌ Failed to send email:', emailResult?.error || 'Unknown error');
           return ctx.serviceUnavailable({
             error: 'Email delivery failed',
             message: 'Unable to send reset email. Please try again later or contact support.'
           });
         }
-        
-        console.log('✅ OTP email sent successfully:', emailResult.messageId);
         
         return {
           message: 'OTP sent successfully to your email address.',
@@ -360,16 +340,9 @@ module.exports = (plugin) => {
         };
         
       } catch (error) {
-        console.error('❌ Unexpected error in forgot password:', error);
+        // Log error for debugging but don't expose details to client
+        console.error('Forgot password error:', error);
         
-        // Log the full error for debugging
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-        
-        // Return a generic error message to the client
         return ctx.internalServerError({
           error: 'Internal server error',
           message: 'An unexpected error occurred. Please try again later or contact support if the problem persists.'
@@ -380,14 +353,10 @@ module.exports = (plugin) => {
     // Add custom reset password method
     plugin.controllers.auth.resetPassword = async (ctx) => {
       try {
-        console.log('🎯 CUSTOM AUTH CONTROLLER: resetPassword method called!');
-        console.log('🔍 Request body:', ctx.request.body);
-        
         const { code, password, passwordConfirmation } = ctx.request.body;
         
         // Validate required fields
         if (!code || !password || !passwordConfirmation) {
-          console.log('❌ Missing required fields');
           return ctx.badRequest({
             error: 'Missing required fields',
             message: 'OTP, password, and password confirmation are required'
@@ -396,7 +365,6 @@ module.exports = (plugin) => {
         
         // Validate OTP format (6 digits)
         if (!/^\d{6}$/.test(code)) {
-          console.log('❌ Invalid OTP format:', code);
           return ctx.badRequest({
             error: 'Invalid OTP format',
             message: 'OTP must be a 6-digit number'
@@ -405,7 +373,6 @@ module.exports = (plugin) => {
         
         // Validate password confirmation
         if (password !== passwordConfirmation) {
-          console.log('❌ Passwords do not match');
           return ctx.badRequest({
             error: 'Passwords do not match',
             message: 'Password and confirmation must be identical'
@@ -414,7 +381,6 @@ module.exports = (plugin) => {
         
         // Validate password strength
         if (password.length < 6) {
-          console.log('❌ Password too short:', password.length);
           return ctx.badRequest({
             error: 'Password too short',
             message: 'Password must be at least 6 characters long'
@@ -422,7 +388,6 @@ module.exports = (plugin) => {
         }
         
         if (password.length > 128) {
-          console.log('❌ Password too long:', password.length);
           return ctx.badRequest({
             error: 'Password too long',
             message: 'Password must be less than 128 characters'
@@ -432,12 +397,11 @@ module.exports = (plugin) => {
         // Find user by OTP
         let users;
         try {
-          users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+          users = await global.strapi.entityService.findMany('plugin::users-permissions.user', {
             filters: { resetPasswordToken: code },
             populate: ['role']
           });
         } catch (dbError) {
-          console.error('❌ Database error finding user by OTP:', dbError);
           return ctx.internalServerError({
             error: 'Database error',
             message: 'Unable to process request. Please try again later.'
@@ -447,23 +411,19 @@ module.exports = (plugin) => {
         const targetUser = users[0];
         
         if (!targetUser) {
-          console.log('❌ Invalid or expired OTP:', code);
           return ctx.badRequest({
             error: 'Invalid OTP',
             message: 'Invalid or expired OTP. Please request a new password reset.'
           });
         }
         
-        console.log('✅ User found with OTP:', { id: targetUser.id, email: targetUser.email });
-        
         // Hash new password
         let hashedPassword;
         try {
-          hashedPassword = await strapi.plugins['users-permissions'].services.user.hashPassword({
+          hashedPassword = await global.strapi.plugins['users-permissions'].services.user.hashPassword({
             password: password
           });
         } catch (hashError) {
-          console.error('❌ Error hashing password:', hashError);
           return ctx.internalServerError({
             error: 'Password processing error',
             message: 'Unable to process password. Please try again later.'
@@ -472,15 +432,13 @@ module.exports = (plugin) => {
         
         // Update user with new password and clear OTP
         try {
-          await strapi.entityService.update('plugin::users-permissions.user', targetUser.id, {
+          await global.strapi.entityService.update('plugin::users-permissions.user', targetUser.id, {
             data: {
               password: hashedPassword,
               resetPasswordToken: null
             }
           });
-          console.log('✅ Password reset successfully for user:', targetUser.email);
         } catch (updateError) {
-          console.error('❌ Error updating user password:', updateError);
           return ctx.internalServerError({
             error: 'Database update error',
             message: 'Unable to update password. Please try again later.'
@@ -493,16 +451,9 @@ module.exports = (plugin) => {
         };
         
       } catch (error) {
-        console.error('❌ Unexpected error in reset password:', error);
+        // Log error for debugging but don't expose details to client
+        console.error('Reset password error:', error);
         
-        // Log the full error for debugging
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-        
-        // Return a generic error message to the client
         return ctx.internalServerError({
           error: 'Internal server error',
           message: 'An unexpected error occurred. Please try again later or contact support if the problem persists.'
@@ -512,83 +463,55 @@ module.exports = (plugin) => {
 
     plugin.controllers.auth.changePassword = async (ctx) => {
       try {
-        console.log('🎯 CUSTOM AUTH CONTROLLER: changePassword method called!');
-        console.log('🔍 Request body:', ctx.request.body);
-        console.log('🔍 User:', ctx.state.user);
-        
         const { currentPassword, password, passwordConfirmation } = ctx.request.body;
         const user = ctx.state.user;
         
         if (!user) {
-          console.log('❌ No user found in ctx.state.user');
           return ctx.unauthorized('Not authenticated');
         }
         
         if (!currentPassword || !password || !passwordConfirmation) {
-          console.log('❌ Missing password fields:', { 
-            currentPassword: !!currentPassword, 
-            password: !!password, 
-            passwordConfirmation: !!passwordConfirmation 
-          });
           return ctx.badRequest('Current password, new password, and password confirmation are required');
         }
         
         if (password !== passwordConfirmation) {
-          console.log('❌ Passwords do not match');
           return ctx.badRequest('New password and confirmation do not match');
         }
         
         if (password.length < 6) {
-          console.log('❌ Password too short:', password.length);
           return ctx.badRequest('New password must be at least 6 characters long');
         }
         
         // Get the current user with password
-        console.log('🔍 Fetching current user data...');
-        const currentUser = await strapi.entityService.findOne('plugin::users-permissions.user', user.id);
-        console.log('✅ Current user fetched:', { id: currentUser.id, email: currentUser.email });
+        const currentUser = await global.strapi.entityService.findOne('plugin::users-permissions.user', user.id);
         
         // Verify current password
-        console.log('🔍 Verifying current password...');
-        const isValidPassword = await strapi.plugins['users-permissions'].services.user.validatePassword(
+        const isValidPassword = await global.strapi.plugins['users-permissions'].services.user.validatePassword(
           currentPassword,
           currentUser.password
         );
         
         if (!isValidPassword) {
-          console.log('❌ Current password is incorrect');
           return ctx.badRequest('Current password is incorrect');
         }
-        console.log('✅ Current password verified');
         
         // Hash the new password
-        console.log('🔍 Hashing new password...');
-        const hashedPassword = await strapi.plugins['users-permissions'].services.user.hashPassword({
+        const hashedPassword = await global.strapi.plugins['users-permissions'].services.user.hashPassword({
           password: password
         });
-        console.log('✅ Password hashed successfully');
         
         // Update the password
-        console.log('🔍 Updating user password...');
-        try {
-          await strapi.entityService.update('plugin::users-permissions.user', user.id, {
-            data: {
-              password: hashedPassword
-            }
-          });
-          console.log('✅ Password updated successfully');
-        } catch (updateError) {
-          console.error('❌ Error updating password:', updateError);
-          throw updateError;
-        }
-        
-        console.log('✅ Password changed successfully for user:', user.id);
+        await global.strapi.entityService.update('plugin::users-permissions.user', user.id, {
+          data: {
+            password: hashedPassword
+          }
+        });
         
         return {
           message: 'Password changed successfully'
         };
       } catch (error) {
-        console.error('❌ Error changing password:', error);
+        console.error('Change password error:', error);
         return ctx.internalServerError('Failed to change password');
       }
     };

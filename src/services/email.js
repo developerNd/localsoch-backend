@@ -4,7 +4,6 @@ const nodemailer = require('nodemailer');
 const createTransporter = () => {
   // Check if email is configured
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.log('❌ Email service not configured - missing EMAIL_USER or EMAIL_PASSWORD');
     return null;
   }
 
@@ -28,7 +27,6 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     const transporter = createTransporter();
     
     if (!transporter) {
-      console.log('❌ Email service not configured');
       return { success: false, error: 'Email service not configured' };
     }
     
@@ -99,12 +97,11 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Password reset email sent successfully:', result.messageId);
 
     return { success: true, messageId: result.messageId };
     
   } catch (error) {
-    console.error('❌ Error sending password reset email:', error);
+    console.error('Error sending password reset email:', error);
     return { success: false, error: error.message };
   }
 };
@@ -115,7 +112,6 @@ const sendPasswordResetOTP = async (email, otp) => {
     const transporter = createTransporter();
     
     if (!transporter) {
-      console.log('❌ Email service not configured');
       return { success: false, error: 'Email service not configured' };
     }
     
@@ -181,12 +177,11 @@ const sendPasswordResetOTP = async (email, otp) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Password reset OTP sent successfully:', result.messageId);
 
     return { success: true, messageId: result.messageId };
     
   } catch (error) {
-    console.error('❌ Error sending password reset OTP:', error);
+    console.error('Error sending password reset OTP:', error);
     return { success: false, error: error.message };
   }
 };
@@ -197,7 +192,6 @@ const sendWelcomeEmail = async (email, username) => {
     const transporter = createTransporter();
     
     if (!transporter) {
-      console.log('❌ Email service not configured');
       return { success: false, error: 'Email service not configured' };
     }
     
@@ -248,12 +242,11 @@ const sendWelcomeEmail = async (email, username) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Welcome email sent successfully:', result.messageId);
 
     return { success: true, messageId: result.messageId };
     
   } catch (error) {
-    console.error('❌ Error sending welcome email:', error);
+    console.error('Error sending welcome email:', error);
     return { success: false, error: error.message };
   }
 };
