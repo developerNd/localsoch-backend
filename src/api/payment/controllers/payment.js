@@ -2,8 +2,8 @@ const Razorpay = require('razorpay');
 
 // Initialize Razorpay with your credentials
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_lFR1xyqT46S2QF',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'ft49CcyTYxqQbQipbAPDXnfz',
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_RAfmnvsVClwAIE',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'Mx1fmKCemdAlDMGPaDLkOEFu',
 });
 
 module.exports = {
