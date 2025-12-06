@@ -1091,4 +1091,93 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       return ctx.internalServerError('Failed to cancel order');
     }
   },
+
+  // Mark order payout as paid (Admin only)
+  async markPayoutPaid(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { payoutAmount, commissionAmount, payoutNotes } = ctx.request.body;
+      
+      console.log('💰 markPayoutPaid called with:', { id, payoutAmount, commissionAmount, payoutNotes });
+      console.log('🔍 User:', ctx.state.user?.id, ctx.state.user?.role?.name);
+      
+      // Check if user is admin
+      if (!ctx.state.user || ctx.state.user.role?.name !== 'admin') {
+        console.log('❌ Access denied - not an admin');
+        return ctx.forbidden('Admin access required');
+      }
+
+      // Get the order
+      let order = await strapi.entityService.findOne('api::order.order', id, {
+        populate: ['vendor', 'user', 'products']
+      });
+
+      if (!order) {
+        console.log('❌ Order not found');
+        return ctx.notFound('Order not found');
+      }
+
+      // Check if order is delivered or picked up
+      if (order.status !== 'delivered' && order.status !== 'pickedUp') {
+        console.log('❌ Order cannot be paid - status:', order.status);
+        return ctx.badRequest(`Payouts can only be processed for delivered or picked up orders. Current status: ${order.status}`);
+      }
+
+      // Check if payout is already paid
+      if (order.payoutStatus === 'paid') {
+        console.log('⚠️ Payout already marked as paid');
+        return ctx.badRequest('This order payout has already been marked as paid');
+      }
+
+      // Calculate amounts if not provided
+      const orderAmount = parseFloat(order.totalAmount || 0);
+      const calculatedCommission = commissionAmount || (orderAmount * 0.0); // Default 0% commission
+      const calculatedPayout = payoutAmount || (orderAmount - calculatedCommission);
+
+      // Update the order with payout information
+      console.log('🔧 Updating order payout with ID:', order.id);
+      const updatedOrder = await strapi.entityService.update('api::order.order', order.id, {
+        data: { 
+          payoutStatus: 'paid',
+          payoutAmount: calculatedPayout,
+          commissionAmount: calculatedCommission,
+          payoutDate: new Date(),
+          payoutNotes: payoutNotes || null,
+        },
+        populate: ['vendor', 'user', 'products']
+      });
+      
+      console.log('✅ Order payout marked as paid successfully:', updatedOrder.id);
+
+      // Create notification for the vendor
+      if (order.vendor && order.vendor.user) {
+        const notificationData = {
+          title: 'Payout Processed',
+          message: `Your payout for order #${order.orderNumber} (₹${calculatedPayout.toFixed(2)}) has been processed and marked as paid.`,
+          type: 'payout',
+          vendor: order.vendor.id,
+          order: order.id,
+          actionUrl: `/seller/orders`,
+          actionText: 'View Orders',
+          isImportant: true
+        };
+
+        console.log('🔔 Creating payout notification:', notificationData);
+
+        const notificationService = strapi.service('api::notification.notification');
+        const notification = await notificationService.createNotification(notificationData);
+        
+        console.log('✅ Payout notification created:', notification.id);
+      }
+
+      return { 
+        success: true,
+        message: 'Payout marked as paid successfully',
+        data: updatedOrder 
+      };
+    } catch (error) {
+      console.error('❌ Error marking payout as paid:', error);
+      return ctx.internalServerError('Failed to mark payout as paid');
+    }
+  },
 })); 

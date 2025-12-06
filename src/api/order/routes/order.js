@@ -93,5 +93,15 @@ module.exports = {
         middlewares: [],
       },
     },
+    // Payout management route (Admin only)
+    {
+      method: 'PUT',
+      path: '/orders/:id/payout',
+      handler: 'order.markPayoutPaid',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 }; 

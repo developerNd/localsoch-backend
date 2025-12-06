@@ -32,6 +32,11 @@
     "couponDiscount": { "type": "decimal", "default": 0 },
     "couponPercentage": { "type": "decimal", "default": 0 },
     "subtotal": { "type": "decimal", "default": 0 },
-    "discountAmount": { "type": "decimal", "default": 0 }
+    "discountAmount": { "type": "decimal", "default": 0 },
+    "payoutStatus": { "type": "enumeration", "enum": ["pending", "paid", "processing"], "default": "pending" },
+    "payoutAmount": { "type": "decimal" },
+    "commissionAmount": { "type": "decimal" },
+    "payoutDate": { "type": "datetime" },
+    "payoutNotes": { "type": "text" }
   }
 } 
